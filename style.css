@@ -36,7 +36,6 @@ body {
     z-index: 2;
     text-align: center;
     padding: 2rem;
-    animation: fadeIn 1.5s ease-out;
 }
 
 .greeting-box {
@@ -47,11 +46,11 @@ body {
     backdrop-filter: blur(8px);
     -webkit-backdrop-filter: blur(8px);
     border: 1px solid rgba(255, 255, 255, 0.18);
-    transition: transform 0.3s ease;
-}
-
-.greeting-box:hover {
-    transform: translateY(-5px);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    width: min(520px, 90vw);
 }
 
 h1 {
@@ -60,6 +59,7 @@ h1 {
     margin-bottom: 0.5rem;
     letter-spacing: 5px;
     text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+    line-height: 1.1;
 }
 
 .subtitle {
@@ -67,12 +67,28 @@ h1 {
     font-weight: 300;
     margin-bottom: 3rem;
     opacity: 0.9;
+    line-height: 1.5;
+}
+
+.cat-static {
+    width: 120px;
+    height: auto;
+    margin: 0 auto 1rem;
+}
+
+.cat-svg {
+    width: 100%;
+    height: auto;
+    display: block;
+    filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.2));
 }
 
 .time-container {
     margin-top: 2rem;
     border-top: 1px solid rgba(255,255,255,0.3);
     padding-top: 2rem;
+    width: 100%;
+    text-align: center;
 }
 
 #time {
@@ -81,19 +97,24 @@ h1 {
     font-family: 'Poppins', sans-serif;
     letter-spacing: 2px;
     margin-bottom: 0.5rem;
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum";
+    display: inline-block;
+    min-width: 8ch;
 }
 
 #date {
     font-size: 1.2rem;
     font-weight: 300;
     opacity: 0.8;
+    line-height: 1.5;
 }
 
 /* Mobile Responsiveness */
 @media (max-width: 768px) {
     .greeting-box {
-        padding: 2rem;
-        width: 90%;
+        padding: 1.75rem 1.5rem;
+        width: 92vw;
     }
 
     h1 {
@@ -106,41 +127,15 @@ h1 {
         margin-bottom: 2rem;
     }
 
+    .cat-static {
+        width: 90px;
+    }
+
     #time {
         font-size: 2.5rem;
     }
 
     #date {
         font-size: 1rem;
-    }
-}
-    /* Optional: maybe a slight bobbing if the GIF is static, but for running GIF it's not needed */
-}
-
-@keyframes fadeIn {
-    from {
-    from {
-        opacity: 0;
-        transform: translateY(20px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-
-@media (max-width: 768px) {
-    .greeting-box {
-        padding: 2rem;
-        width: 90%;
-        margin: 0 auto;
-    }
-
-    h1 {
-        font-size: 3rem;
-    }
-
-    #time {
-        font-size: 2.5rem;
     }
 }
