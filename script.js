@@ -38,7 +38,10 @@ function moveCatRandomly() {
     if (isResting) return;
 
     // Ensure we are using running GIF
-    if (catImg.src !== runningURL) catImg.src = runningURL;
+    // Use .includes() because src is absolute path
+    if (!catImg.src.includes("pusheen-running.gif")) {
+        catImg.src = runningURL;
+    }
 
     // Pick a random target within window bounds (padding 100px)
     const targetX = Math.random() * (window.innerWidth - 100);
@@ -111,7 +114,4 @@ window.addEventListener('resize', () => {
         currentX = newX;
         currentY = newY;
     }
-});
-    cat.style.left = `${currentX}px`;
-    cat.style.top = `${currentY}px`;
 });
