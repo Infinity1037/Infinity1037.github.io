@@ -89,7 +89,31 @@ h1 {
     opacity: 0.8;
 }
 
+/* Cat Animation Styles */
+#cat-container {
+    position: absolute;
+    width: 80px; /* Smaller size */
+    height: auto;
+    z-index: 10;
+    pointer-events: none;
+    /* Transition handled in JS for variable speed */
+}
+
+#cat-gif {
+    width: 100%;
+    height: auto;
+    display: block;
+    /* Pusheen GIF usually has good contrast, drop shadow optional but nice */
+    filter: drop-shadow(0 2px 5px rgba(0,0,0,0.2));
+}
+
+/* Remove CSS bounce because GIF already runs */
+.running {
+    /* Optional: maybe a slight bobbing if the GIF is static, but for running GIF it's not needed */
+}
+
 @keyframes fadeIn {
+    from {
     from {
         opacity: 0;
         transform: translateY(20px);
