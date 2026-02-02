@@ -23,14 +23,10 @@ const cat = document.getElementById('cat-container');
 const catImg = document.getElementById('cat-gif');
 let isResting = false;
 
-// Pusheen GIF running state URL
-const runningURL = "https://media.tenor.com/fSsxHn4tA4EAAAAi/pusheen-cat.gif";
-// Pusheen GIF resting/sitting state URL (Optional, can just stop moving)
-// Using a static image or a sitting GIF for rest would be nice, but stopping is fine too.
-// Let's just keep the running GIF but maybe stop the movement. 
-// Actually, if it stops moving but the GIF keeps running in place, it looks like a treadmill.
-// Ideally we switch to a "sitting" GIF.
-const sittingURL = "https://media.tenor.com/1-1M6k4n9mMAAAAi/pusheen-cat.gif"; // Sitting/Wagging tail
+// Pusheen GIF running state URL (Local)
+const runningURL = "images/pusheen-running.gif";
+// Pusheen GIF resting/sitting state URL (Local)
+const sittingURL = "images/pusheen-sitting.gif";
 
 // Set initial random position
 let currentX = Math.random() * (window.innerWidth - 100);
@@ -99,8 +95,23 @@ moveCatRandomly();
 
 // Handle Window Resize (Keep cat in bounds)
 window.addEventListener('resize', () => {
-    currentX = Math.min(currentX, window.innerWidth - 100);
-    currentY = Math.min(currentY, window.innerHeight - 100);
+    // If cat is outside new bounds, bring it back
+    const maxX = window.innerWidth - 100;
+    const maxY = window.innerHeight - 100;
+    
+    let newX = currentX;
+    let newY = currentY;
+    
+    if (currentX > maxX) newX = maxX;
+    if (currentY > maxY) newY = maxY;
+    
+    if (newX !== currentX || newY !== currentY) {
+        cat.style.left = `${newX}px`;
+        cat.style.top = `${newY}px`;
+        currentX = newX;
+        currentY = newY;
+    }
+});
     cat.style.left = `${currentX}px`;
     cat.style.top = `${currentY}px`;
 });
