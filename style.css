@@ -10,7 +10,7 @@
 }
 
 body {
-    font-family: 'Poppins', 'Noto Serif SC', serif;
+    font-family: system-ui, -apple-system, "Segoe UI", "PingFang SC", "Noto Sans CJK SC", "Microsoft YaHei", sans-serif;
     height: 100vh;
     overflow: hidden;
     color: var(--text-color);
