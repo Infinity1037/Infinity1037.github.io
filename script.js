@@ -1,4 +1,4 @@
-// Firebase Configuration
+// ==================== Firebase 配置 ====================
 const firebaseConfig = {
     apiKey: "AIzaSyAo5yc2z-Q6YV5nbfTLBOcB1yR8IvaC-S0",
     authDomain: "shared-cat.firebaseapp.com",
@@ -9,51 +9,68 @@ const firebaseConfig = {
     appId: "1:35653587925:web:7b88608731f410bfd8e35c"
 };
 
-// Initialize Firebase
 firebase.initializeApp(firebaseConfig);
 const database = firebase.database();
-const catRef = database.ref('cat');
+const catRef = database.ref('catV2');
 
+// ==================== 游戏设置 ====================
+const MAX_STAT = 100;
+const DECAY_PER_HOUR = { hunger: 6, mood: 4, energy: 3 };
+const FEED_EFFECT = { hunger: 20, mood: 8 };
+const PET_EFFECT = { mood: 12, energy: 5 };
+const WARNING_THRESHOLD = 30; // 低于30%显示警告
+
+// 猫咪对话
+const SPEECHES = {
+    hungry: ['肚子饿了...', '想吃小鱼干~', '喂喂我嘛', '好饿呀~'],
+    sad: ['陪我玩~', '好无聊啊', '摸摸我', '想你了~'],
+    tired: ['好困...', '想睡觉', 'zzZ', '眼皮好重'],
+    happy: ['好开心！', '喵~♡', '最喜欢你们了', '幸福~'],
+    normal: ['你好呀~', '喵~', '今天不错', '嘿嘿']
+};
+
+const FEED_RESPONSES = ['好吃~', '真香！', '还要还要', '满足~', '谢谢~', '太棒了！'];
+const PET_RESPONSES = ['舒服~', '喵~', '再摸摸', '开心！', '嘿嘿', '好舒服'];
+
+// ==================== 状态 ====================
+let catState = {
+    hunger: 80,
+    mood: 70,
+    energy: 60,
+    lastUpdate: Date.now(),
+    totalFeeds: 0,
+    totalPets: 0
+};
+
+// ==================== 时间更新 ====================
 function updateTime() {
     const now = new Date();
     const hours = now.getHours();
-    
-    // Update Time
-    const timeElement = document.getElementById('time');
-    const minutes = String(now.getMinutes()).padStart(2, '0');
-    const seconds = String(now.getSeconds()).padStart(2, '0');
-    timeElement.textContent = `${String(hours).padStart(2, '0')}:${minutes}:${seconds}`;
 
-    // Update Date
-    const dateElement = document.getElementById('date');
-    const options = { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' };
-    dateElement.textContent = now.toLocaleDateString('zh-CN', options);
-    
-    // Update Greeting based on time
-    const greetingElement = document.getElementById('greeting');
-    let greetingText = '';
-    let themeClass = '';
-    
+    document.getElementById('time').textContent =
+        `${String(hours).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
+
+    document.getElementById('date').textContent =
+        now.toLocaleDateString('zh-CN', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' });
+
+    let theme;
     if (hours >= 5 && hours < 12) {
-        greetingText = '早上好';
-        themeClass = 'theme-morning';
+        document.getElementById('greeting').textContent = '早上好';
+        theme = 'theme-morning';
     } else if (hours >= 12 && hours < 18) {
-        greetingText = '下午好';
-        themeClass = 'theme-afternoon';
+        document.getElementById('greeting').textContent = '下午好';
+        theme = 'theme-afternoon';
     } else if (hours >= 18 && hours < 22) {
-        greetingText = '晚上好';
-        themeClass = 'theme-evening';
+        document.getElementById('greeting').textContent = '晚上好';
+        theme = 'theme-evening';
     } else {
-        greetingText = '夜深了';
-        themeClass = 'theme-night';
+        document.getElementById('greeting').textContent = '夜深了';
+        theme = 'theme-night';
     }
-    greetingElement.textContent = greetingText;
-    
-    // Update background theme
-    document.body.className = themeClass;
+    document.body.className = theme;
 }
 
-// Daily Quotes
+// ==================== 名言 ====================
 const quotes = [
     { text: '生活不是等待风暴过去，而是学会在雨中跳舞', author: '维维安·格林' },
     { text: '每一个不曾起舞的日子，都是对生命的辜负', author: '尼采' },
@@ -62,249 +79,340 @@ const quotes = [
     { text: '星光不问赶路人，时光不负有心人', author: '' },
     { text: '愿你被这个世界温柔以待', author: '' },
     { text: '今天的努力，是幸运的伏笔', author: '' },
-    { text: '心若向阳，无畏悲伤', author: '' },
-    { text: '慢慢来，比较快', author: '' },
-    { text: '一切都是最好的安排', author: '' }
+    { text: '慢慢来，比较快', author: '' }
 ];
 
 function updateQuote() {
-    const quoteElement = document.getElementById('quote');
-    const authorElement = document.getElementById('quote-author');
-    const randomIndex = Math.floor(Math.random() * quotes.length);
-    const quote = quotes[randomIndex];
-    quoteElement.textContent = quote.text;
-    authorElement.textContent = quote.author ? `—— ${quote.author}` : '';
+    const q = quotes[Math.floor(Math.random() * quotes.length)];
+    document.getElementById('quote').textContent = q.text;
+    document.getElementById('quote-author').textContent = q.author ? `—— ${q.author}` : '';
 }
 
-// Update immediately and then every second
-updateTime();
-setInterval(updateTime, 1000);
-updateQuote();
+// ==================== 猫咪显示 ====================
+function updateDisplay() {
+    // 更新属性条和数值
+    updateStat('hunger', catState.hunger);
+    updateStat('mood', catState.mood);
+    updateStat('energy', catState.energy);
 
-// Change quote every hour
-setInterval(updateQuote, 3600000);
+    // 更新眼睛表情
+    document.getElementById('eyes-normal').style.display = 'none';
+    document.getElementById('eyes-happy').style.display = 'none';
+    document.getElementById('eyes-sad').style.display = 'none';
 
-// Cat Interaction
-const cat = document.getElementById('cat');
-const catEyes = cat.querySelector('.cat-eyes');
-const catEyesClosed = cat.querySelector('.cat-eyes-closed');
-const meowBubble = cat.querySelector('.meow-bubble');
+    if (catState.mood >= 70) {
+        document.getElementById('eyes-happy').style.display = 'block';
+    } else if (catState.mood < 30 || catState.hunger < 30) {
+        document.getElementById('eyes-sad').style.display = 'block';
+    } else {
+        document.getElementById('eyes-normal').style.display = 'block';
+    }
 
-let isInteracting = false;
+    // 更新统计
+    document.getElementById('total-feeds').textContent = catState.totalFeeds;
+    document.getElementById('total-pets').textContent = catState.totalPets;
+}
 
-function interactWithCat() {
-    if (isInteracting) return;
-    isInteracting = true;
-    
-    // Blink animation
-    catEyes.style.display = 'none';
-    catEyesClosed.style.display = 'block';
-    
-    // Add bounce animation
+// 数字动画
+function animateValue(obj, start, end, duration) {
+    let startTimestamp = null;
+    const step = (timestamp) => {
+        if (!startTimestamp) startTimestamp = timestamp;
+        const progress = Math.min((timestamp - startTimestamp) / duration, 1);
+        obj.textContent = Math.floor(progress * (end - start) + start) + "%";
+        if (progress < 1) {
+            window.requestAnimationFrame(step);
+        }
+    };
+    window.requestAnimationFrame(step);
+}
+
+function updateStat(stat, value) {
+    const fill = document.getElementById(`${stat}-fill`);
+    const num = document.getElementById(`${stat}-num`);
+    const row = document.getElementById(`${stat}-row`);
+    const currentVal = parseInt(num.textContent) || 0;
+
+    fill.style.width = `${value}%`;
+
+    // 只有数值变化较大时才动画，避免频繁跳动
+    if (Math.abs(value - currentVal) > 1) {
+        animateValue(num, currentVal, value, 500);
+    } else {
+        num.textContent = `${Math.round(value)}%`;
+    }
+
+    // 低属性警告
+    if (value < WARNING_THRESHOLD) {
+        row.classList.add('warning');
+        fill.classList.add('low');
+    } else {
+        row.classList.remove('warning');
+        fill.classList.remove('low');
+    }
+}
+
+function updateSpeech() {
+    let speeches;
+    if (catState.hunger < 30) {
+        speeches = SPEECHES.hungry;
+    } else if (catState.mood < 30) {
+        speeches = SPEECHES.sad;
+    } else if (catState.energy < 30) {
+        speeches = SPEECHES.tired;
+    } else if (catState.mood >= 70) {
+        speeches = SPEECHES.happy;
+    } else {
+        speeches = SPEECHES.normal;
+    }
+    document.getElementById('cat-speech').textContent = speeches[Math.floor(Math.random() * speeches.length)];
+}
+
+function showBubble(text) {
+    const bubble = document.getElementById('meow-bubble');
+    bubble.textContent = text;
+    bubble.classList.add('show');
+    setTimeout(() => bubble.classList.remove('show'), 1500);
+}
+
+function catBounce() {
+    const cat = document.getElementById('cat');
     cat.classList.add('tapped');
-    
-    // Show meow bubble
-    meowBubble.classList.add('show');
-    
-    // Restore after animation
-    setTimeout(() => {
-        catEyes.style.display = 'block';
-        catEyesClosed.style.display = 'none';
-        cat.classList.remove('tapped');
-    }, 200);
-    
-    // Hide bubble after 1.5 seconds
-    setTimeout(() => {
-        meowBubble.classList.remove('show');
-        isInteracting = false;
-    }, 1500);
+    setTimeout(() => cat.classList.remove('tapped'), 300);
+    if (navigator.vibrate) navigator.vibrate(30);
 }
 
-// Cat Care System (Firebase Realtime Database - Shared across all users)
-const MAX_MOOD = 100;
-const MOOD_DECAY_RATE = 5; // mood points lost per hour
-const FEED_BOOST = 20;
-const PET_BOOST = 10;
+// ==================== 粒子特效 ====================
+function createParticles(x, y, emoji) {
+    for (let i = 0; i < 6; i++) {
+        const p = document.createElement('div');
+        p.className = 'particle';
+        p.textContent = emoji;
 
-let catState = {
-    mood: 80,
-    lastFed: Date.now(),
-    lastInteraction: Date.now(),
-    isLocked: false
-};
+        // 随机发散方向
+        const angle = Math.random() * Math.PI * 2;
+        const velocity = 50 + Math.random() * 50;
+        const tx = Math.cos(angle) * velocity + 'px';
+        const ty = Math.sin(angle) * velocity + 'px';
 
-// Listen to Firebase data changes (real-time sync)
-function initFirebaseListener() {
+        p.style.setProperty('--tx', tx);
+        p.style.setProperty('--ty', ty);
+        p.style.left = x + 'px';
+        p.style.top = y + 'px';
+
+        document.body.appendChild(p);
+
+        // 动画结束后移除
+        setTimeout(() => p.remove(), 1000);
+    }
+}
+
+// ==================== 喂食和抚摸 ====================
+let lastFeedTime = 0;
+let lastPetTime = 0;
+const COOLDOWN = 300;
+
+function feedCat() {
+    const now = Date.now();
+    if (now - lastFeedTime < COOLDOWN) return;
+    lastFeedTime = now;
+
+    catState.hunger = Math.min(MAX_STAT, catState.hunger + FEED_EFFECT.hunger);
+    catState.mood = Math.min(MAX_STAT, catState.mood + FEED_EFFECT.mood);
+    catState.lastUpdate = now;
+    catState.totalFeeds++;
+
+    showBubble(FEED_RESPONSES[Math.floor(Math.random() * FEED_RESPONSES.length)]);
+    catBounce();
+    updateDisplay();
+    updateSpeech();
+    saveCatState();
+}
+
+function petCat() {
+    const now = Date.now();
+    if (now - lastPetTime < COOLDOWN) return;
+    lastPetTime = now;
+
+    catState.mood = Math.min(MAX_STAT, catState.mood + PET_EFFECT.mood);
+    catState.energy = Math.min(MAX_STAT, catState.energy + PET_EFFECT.energy);
+    catState.lastUpdate = now;
+    catState.totalPets++;
+
+    showBubble(PET_RESPONSES[Math.floor(Math.random() * PET_RESPONSES.length)]);
+    catBounce();
+    updateDisplay();
+    updateSpeech();
+    saveCatState();
+}
+
+// ==================== Firebase 同步 ====================
+function initFirebase() {
     const loadingScreen = document.getElementById('loading-screen');
     const mainContent = document.getElementById('main-content');
-    const loadingText = document.querySelector('.loading-text');
-    
-    // Update loading text
-    loadingText.textContent = '正在连接...';
-    
+
     catRef.on('value', (snapshot) => {
         const data = snapshot.val();
-        if (data) {
-            // Update loading text
-            loadingText.textContent = '正在加载...';
-            
-            // Calculate mood decay based on time passed
-            const hoursPassed = (Date.now() - data.lastInteraction) / (1000 * 60 * 60);
-            const decayedMood = Math.max(0, data.mood - hoursPassed * MOOD_DECAY_RATE);
-            
+        if (data && data.lastUpdate) {
+            const now = Date.now();
+            const lastUpdate = Number(data.lastUpdate) || now;
+            const hoursPassed = Math.max(0, (now - lastUpdate) / 3600000);
+
+            // 计算衰减后的值，确保不为NaN
+            let hunger = Number(data.hunger);
+            let mood = Number(data.mood);
+            let energy = Number(data.energy);
+
+            // 如果是NaN，使用默认值
+            if (isNaN(hunger)) hunger = 80;
+            if (isNaN(mood)) mood = 70;
+            if (isNaN(energy)) energy = 60;
+
+            // 应用衰减
+            hunger = Math.max(0, Math.min(100, hunger - hoursPassed * DECAY_PER_HOUR.hunger));
+            mood = Math.max(0, Math.min(100, mood - hoursPassed * DECAY_PER_HOUR.mood));
+            energy = Math.max(0, Math.min(100, energy - hoursPassed * DECAY_PER_HOUR.energy));
+
             catState = {
-                mood: decayedMood,
-                lastFed: data.lastFed,
-                lastInteraction: data.lastInteraction,
-                isLocked: data.isLocked || false
+                hunger: hunger,
+                mood: mood,
+                energy: energy,
+                lastUpdate: lastUpdate,
+                totalFeeds: Number(data.totalFeeds) || 0,
+                totalPets: Number(data.totalPets) || 0
             };
-            updateCatDisplay();
-            
-            // Hide loading screen and show main content
+
+            updateDisplay();
+            updateSpeech();
+
             loadingScreen.style.opacity = '0';
             setTimeout(() => {
                 loadingScreen.style.display = 'none';
                 mainContent.style.opacity = '1';
                 mainContent.classList.add('loaded');
-            }, 500);
+            }, 400);
         } else {
-            // Initialize with default values if no data exists
-            loadingText.textContent = '初始化中...';
+            // 数据不存在或无效，使用默认值并保存
+            catState = {
+                hunger: 80,
+                mood: 70,
+                energy: 60,
+                lastUpdate: Date.now(),
+                totalFeeds: 0,
+                totalPets: 0
+            };
             saveCatState();
+            updateDisplay();
+            updateSpeech();
+
+            loadingScreen.style.opacity = '0';
+            setTimeout(() => {
+                loadingScreen.style.display = 'none';
+                mainContent.style.opacity = '1';
+                mainContent.classList.add('loaded');
+            }, 400);
         }
     }, (error) => {
-        // Handle connection error
-        loadingText.textContent = '连接失败，请刷新';
-        console.error('Firebase error:', error);
+        document.querySelector('.loading-text').textContent = '连接失败';
+        console.error(error);
     });
 }
 
-// Save cat state to Firebase (syncs to all users)
 function saveCatState() {
     catRef.set({
+        hunger: catState.hunger,
         mood: catState.mood,
-        lastFed: catState.lastFed,
-        lastInteraction: catState.lastInteraction,
-        isLocked: false
+        energy: catState.energy,
+        lastUpdate: catState.lastUpdate,
+        totalFeeds: catState.totalFeeds,
+        totalPets: catState.totalPets
     });
 }
 
-// Get mood status text and color
-function getMoodStatus(mood) {
-    if (mood >= 70) return { text: '开心', class: 'high' };
-    if (mood >= 40) return { text: '一般', class: 'medium' };
-    return { text: '难过', class: 'low' };
-}
-
-// Update cat display (mood bar, status, eyes)
-function updateCatDisplay() {
-    const moodFill = document.getElementById('mood-fill');
-    const catStatus = document.getElementById('cat-status');
-    const catEyes = document.querySelector('.cat-eyes');
-    const catEyesHappy = document.querySelector('.cat-eyes-happy');
-    const catEyesSad = document.querySelector('.cat-eyes-sad');
-    
-    // Update mood bar
-    moodFill.style.width = `${catState.mood}%`;
-    const moodStatus = getMoodStatus(catState.mood);
-    moodFill.className = `mood-fill ${moodStatus.class}`;
-    
-    // Update status text
-    catStatus.textContent = `心情: ${moodStatus.text}`;
-    
-    // Update eyes based on mood
-    catEyes.style.display = 'none';
-    catEyesHappy.style.display = 'none';
-    catEyesSad.style.display = 'none';
-    
-    if (catState.mood >= 70) {
-        catEyesHappy.style.display = 'block';
-    } else if (catState.mood >= 40) {
-        catEyes.style.display = 'block';
-    } else {
-        catEyesSad.style.display = 'block';
-    }
-}
-
-// Feed the cat
-function feedCat() {
-    if (isInteracting || catState.isLocked) return;
-    
-    // Set lock to prevent concurrent updates
-    catRef.child('isLocked').set(true);
-    isInteracting = true;
-    
-    const newMood = Math.min(MAX_MOOD, catState.mood + FEED_BOOST);
-    const now = Date.now();
-    
-    catRef.set({
-        mood: newMood,
-        lastFed: now,
-        lastInteraction: now,
-        isLocked: false
-    });
-    
-    // Show feeding animation
-    const meowBubble = document.querySelector('.meow-bubble');
-    const originalText = meowBubble.textContent;
-    meowBubble.textContent = '好吃~';
-    meowBubble.classList.add('show');
-    
-    // Bounce animation
-    const cat = document.getElementById('cat');
-    cat.classList.add('tapped');
-    
+// ==================== 额外功能 ====================
+// 猫咪眨眼
+function blinkCat() {
+    const eyes = document.querySelectorAll('.eye');
+    eyes.forEach(eye => eye.classList.add('blink'));
     setTimeout(() => {
-        cat.classList.remove('tapped');
-        meowBubble.classList.remove('show');
-        meowBubble.textContent = originalText;
-        isInteracting = false;
-    }, 1500);
-    
-    // Vibrate on mobile
-    if (navigator.vibrate) {
-        navigator.vibrate(50);
+        eyes.forEach(eye => eye.classList.remove('blink'));
+    }, 200);
+
+    // 随机下一次眨眼时间 (3-8秒)
+    setTimeout(blinkCat, Math.random() * 5000 + 3000);
+}
+
+// 动态天气
+function updateWeather(hours) {
+    const layer = document.getElementById('weather-layer');
+    if (!layer) return;
+    layer.innerHTML = ''; // 清空现有元素
+
+    if (hours >= 6 && hours < 18) {
+        // 白天：云朵
+        for (let i = 0; i < 4; i++) {
+            const cloud = document.createElement('div');
+            cloud.className = 'cloud';
+            cloud.style.top = (5 + Math.random() * 40) + '%';
+            cloud.style.animationDuration = (25 + Math.random() * 25) + 's';
+            cloud.style.animationDelay = -(Math.random() * 20) + 's';
+            cloud.style.transform = `scale(${0.6 + Math.random() * 0.6})`;
+            layer.appendChild(cloud);
+        }
+    } else {
+        // 晚上：星星
+        for (let i = 0; i < 40; i++) {
+            const star = document.createElement('div');
+            star.className = 'star';
+            star.style.left = Math.random() * 100 + '%';
+            star.style.top = Math.random() * 70 + '%';
+            star.style.width = star.style.height = (2 + Math.random() * 3) + 'px';
+            star.style.animationDelay = Math.random() * 3 + 's';
+            layer.appendChild(star);
+        }
     }
 }
 
-// Pet the cat
-function petCat() {
-    if (isInteracting || catState.isLocked) return;
-    
-    // Set lock to prevent concurrent updates
-    catRef.child('isLocked').set(true);
-    
-    const newMood = Math.min(MAX_MOOD, catState.mood + PET_BOOST);
-    const now = Date.now();
-    
-    catRef.set({
-        mood: newMood,
-        lastFed: catState.lastFed,
-        lastInteraction: now,
-        isLocked: false
+// ==================== 初始化 ====================
+document.addEventListener('DOMContentLoaded', function () {
+    updateTime();
+    setInterval(updateTime, 1000);
+
+    updateQuote();
+    setInterval(updateQuote, 3600000);
+
+    setInterval(updateSpeech, 15000);
+
+    // 启动额外功能
+    blinkCat();
+    // 初始调用一次天气 (传入当前小时)
+    const nowHour = new Date().getHours();
+    updateWeather(nowHour);
+    // 每小时更新一次天气
+    setInterval(() => updateWeather(new Date().getHours()), 3600000);
+
+    initFirebase();
+
+    // 事件绑定
+    const feedBtn = document.getElementById('feed-btn');
+    const petBtn = document.getElementById('pet-btn');
+    const catEl = document.getElementById('cat');
+
+    feedBtn.addEventListener('pointerdown', (e) => {
+        e.preventDefault();
+        feedCat();
+        createParticles(e.clientX, e.clientY, '🐟');
     });
-    
-    // Reuse existing interact function for animation
-    interactWithCat();
-    
-    // Vibrate on mobile
-    if (navigator.vibrate) {
-        navigator.vibrate([30, 50, 30]);
-    }
-}
 
-// Initialize cat care system
-initFirebaseListener();
+    petBtn.addEventListener('pointerdown', (e) => {
+        e.preventDefault();
+        petCat();
+        createParticles(e.clientX, e.clientY, '💖');
+    });
 
-// Set up action buttons
-document.getElementById('feed-btn').addEventListener('click', feedCat);
-document.getElementById('feed-btn').addEventListener('touchstart', (e) => {
-    e.preventDefault();
-    feedCat();
-});
-
-document.getElementById('pet-btn').addEventListener('click', petCat);
-document.getElementById('pet-btn').addEventListener('touchstart', (e) => {
-    e.preventDefault();
-    petCat();
+    catEl.addEventListener('pointerdown', (e) => {
+        showBubble('喵~');
+        catBounce();
+        createParticles(e.clientX, e.clientY, '⭐');
+    });
 });

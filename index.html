@@ -1,81 +1,128 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>早安，新的一天</title>
+    <title>二五一二零五</title>
     <link rel="stylesheet" href="style.css">
 </head>
+
 <body>
     <div class="background-overlay"></div>
-    
+    <div class="weather-layer" id="weather-layer"></div>
+
     <!-- Loading Screen -->
     <div class="loading-screen" id="loading-screen">
         <div class="loading-content">
             <div class="loading-cat">
                 <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
-                    <circle cx="100" cy="110" r="60" fill="#FFFFFF" opacity="0.3"/>
-                    <circle cx="100" cy="80" r="55" fill="#FFFFFF" opacity="0.3"/>
-                    <path d="M60 55 L45 20 L85 45 Z" fill="#FFFFFF" opacity="0.3"/>
-                    <path d="M140 55 L155 20 L115 45 Z" fill="#FFFFFF" opacity="0.3"/>
+                    <circle cx="100" cy="110" r="60" fill="#FFFFFF" opacity="0.3" />
+                    <circle cx="100" cy="80" r="55" fill="#FFFFFF" opacity="0.3" />
+                    <path d="M60 55 L45 20 L85 45 Z" fill="#FFFFFF" opacity="0.3" />
+                    <path d="M140 55 L155 20 L115 45 Z" fill="#FFFFFF" opacity="0.3" />
                 </svg>
             </div>
-            <div class="loading-text">正在连接...</div>
+            <div class="loading-text">正在连接</div>
         </div>
     </div>
-    
+
     <main class="container" id="main-content" style="opacity: 0;">
         <div class="greeting-box">
             <h1 id="greeting">早上好</h1>
             <p class="subtitle">愿咪拥有美好的一天</p>
-            
-            <div class="cat-static" id="cat" aria-hidden="true">
-                <div class="cat-status" id="cat-status">心情: 开心</div>
-                <svg class="cat-svg" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
-                    <circle cx="100" cy="110" r="60" fill="#FFFFFF"/>
-                    <circle cx="100" cy="80" r="55" fill="#FFFFFF"/>
-                    <path d="M60 55 L45 20 L85 45 Z" fill="#FFFFFF"/>
-                    <path d="M140 55 L155 20 L115 45 Z" fill="#FFFFFF"/>
-                    <path d="M62 53 L52 28 L82 47 Z" fill="#FFB7B2"/>
-                    <path d="M138 53 L148 28 L118 47 Z" fill="#FFB7B2"/>
-                    <g class="cat-eyes">
-                        <circle cx="80" cy="80" r="6" fill="#333333"/>
-                        <circle cx="120" cy="80" r="6" fill="#333333"/>
-                    </g>
-                    <g class="cat-eyes-closed" style="display: none;">
-                        <path d="M74 80 Q80 85 86 80" fill="none" stroke="#333333" stroke-width="3" stroke-linecap="round"/>
-                        <path d="M114 80 Q120 85 126 80" fill="none" stroke="#333333" stroke-width="3" stroke-linecap="round"/>
-                    </g>
-                    <g class="cat-eyes-happy" style="display: none;">
-                        <path d="M74 80 Q80 75 86 80" fill="none" stroke="#333333" stroke-width="3" stroke-linecap="round"/>
-                        <path d="M114 80 Q120 75 126 80" fill="none" stroke="#333333" stroke-width="3" stroke-linecap="round"/>
-                    </g>
-                    <g class="cat-eyes-sad" style="display: none;">
-                        <path d="M74 82 Q80 87 86 82" fill="none" stroke="#333333" stroke-width="3" stroke-linecap="round"/>
-                        <path d="M114 82 Q120 87 126 82" fill="none" stroke="#333333" stroke-width="3" stroke-linecap="round"/>
-                    </g>
-                    <path d="M95 95 Q100 100 105 95" fill="none" stroke="#333333" stroke-width="4" stroke-linecap="round"/>
-                    <ellipse cx="85" cy="100" rx="6" ry="3" fill="#FFB7B2" opacity="0.7"/>
-                    <ellipse cx="115" cy="100" rx="6" ry="3" fill="#FFB7B2" opacity="0.7"/>
-                    <ellipse cx="70" cy="170" rx="12" ry="10" fill="#FFFFFF"/>
-                    <ellipse cx="130" cy="170" rx="12" ry="10" fill="#FFFFFF"/>
-                    <path d="M160 140 Q180 135 170 115 Q160 100 140 120" fill="none" stroke="#FFFFFF" stroke-width="12" stroke-linecap="round"/>
-                </svg>
-                <div class="meow-bubble">喵~</div>
-                <div class="mood-bar">
-                    <div class="mood-fill" id="mood-fill"></div>
+
+            <div class="cat-area">
+                <!-- 猫咪对话 -->
+                <div class="cat-speech" id="cat-speech">今天心情不错~</div>
+
+                <!-- 猫咪（添加浮动动画） -->
+                <div class="cat-wrapper">
+                    <div class="cat-static" id="cat">
+                        <svg class="cat-svg" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+                            <circle cx="100" cy="110" r="60" fill="#FFFFFF" />
+                            <circle cx="100" cy="80" r="55" fill="#FFFFFF" />
+                            <path d="M60 55 L45 20 L85 45 Z" fill="#FFFFFF" />
+                            <path d="M140 55 L155 20 L115 45 Z" fill="#FFFFFF" />
+                            <path d="M62 53 L52 28 L82 47 Z" fill="#FFB7B2" />
+                            <path d="M138 53 L148 28 L118 47 Z" fill="#FFB7B2" />
+                            <g id="eyes-normal" class="eye">
+                                <circle cx="80" cy="80" r="6" fill="#333" />
+                                <circle cx="120" cy="80" r="6" fill="#333" />
+                            </g>
+                            <g id="eyes-happy" style="display:none;" class="eye">
+                                <path d="M74 80 Q80 75 86 80" fill="none" stroke="#333" stroke-width="3"
+                                    stroke-linecap="round" />
+                                <path d="M114 80 Q120 75 126 80" fill="none" stroke="#333" stroke-width="3"
+                                    stroke-linecap="round" />
+                            </g>
+                            <g id="eyes-sad" style="display:none;">
+                                <path d="M74 82 Q80 87 86 82" fill="none" stroke="#333" stroke-width="3"
+                                    stroke-linecap="round" />
+                                <path d="M114 82 Q120 87 126 82" fill="none" stroke="#333" stroke-width="3"
+                                    stroke-linecap="round" />
+                            </g>
+                            <path d="M95 95 Q100 100 105 95" fill="none" stroke="#333" stroke-width="4"
+                                stroke-linecap="round" />
+                            <ellipse cx="65" cy="95" rx="8" ry="4" fill="#FFB7B2" opacity="0.7" />
+                            <ellipse cx="135" cy="95" rx="8" ry="4" fill="#FFB7B2" opacity="0.7" />
+                            <ellipse cx="70" cy="170" rx="12" ry="10" fill="#FFFFFF" />
+                            <ellipse cx="130" cy="170" rx="12" ry="10" fill="#FFFFFF" />
+                            <path d="M160 140 Q180 135 170 115 Q160 100 140 120" fill="none" stroke="#FFFFFF"
+                                stroke-width="12" stroke-linecap="round" />
+                        </svg>
+                        <div class="meow-bubble" id="meow-bubble">喵~</div>
+                    </div>
                 </div>
+
+                <!-- 属性条（带数值） -->
+                <div class="stats-simple">
+                    <div class="stat-item" id="hunger-row">
+                        <span class="stat-icon">🍖</span>
+                        <div class="stat-bar">
+                            <div class="stat-fill hunger" id="hunger-fill"></div>
+                        </div>
+                        <span class="stat-num" id="hunger-num">80%</span>
+                    </div>
+                    <div class="stat-item" id="mood-row">
+                        <span class="stat-icon">💖</span>
+                        <div class="stat-bar">
+                            <div class="stat-fill mood" id="mood-fill"></div>
+                        </div>
+                        <span class="stat-num" id="mood-num">70%</span>
+                    </div>
+                    <div class="stat-item" id="energy-row">
+                        <span class="stat-icon">⚡</span>
+                        <div class="stat-bar">
+                            <div class="stat-fill energy" id="energy-fill"></div>
+                        </div>
+                        <span class="stat-num" id="energy-num">60%</span>
+                    </div>
+                </div>
+
+                <!-- 按钮 -->
                 <div class="cat-actions">
-                    <button class="action-btn" id="feed-btn">喂食</button>
-                    <button class="action-btn" id="pet-btn">抚摸</button>
+                    <button class="action-btn feed-btn" id="feed-btn">
+                        <span class="btn-icon">🐟</span>
+                        <span class="btn-text">喂食</span>
+                    </button>
+                    <button class="action-btn pet-btn" id="pet-btn">
+                        <span class="btn-icon">🖐️</span>
+                        <span class="btn-text">抚摸</span>
+                    </button>
+                </div>
+
+                <!-- 统计 -->
+                <div class="stats-info">
+                    共被喂食 <span id="total-feeds">0</span> 次 · 互动 <span id="total-pets">0</span> 次
                 </div>
             </div>
-            
+
             <div class="time-container">
                 <div id="time">00:00:00</div>
                 <div id="date">YYYY年MM月DD日 星期X</div>
             </div>
-            
+
             <div class="quote-container">
                 <div id="quote">正在加载...</div>
                 <div id="quote-author"></div>
@@ -87,4 +134,5 @@
     <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-database-compat.js" defer></script>
     <script src="script.js" defer></script>
 </body>
+
 </html>
