@@ -135,9 +135,19 @@ let catState = {
 
 // Listen to Firebase data changes (real-time sync)
 function initFirebaseListener() {
+    const loadingScreen = document.getElementById('loading-screen');
+    const mainContent = document.getElementById('main-content');
+    const loadingText = document.querySelector('.loading-text');
+    
+    // Update loading text
+    loadingText.textContent = '正在连接...';
+    
     catRef.on('value', (snapshot) => {
         const data = snapshot.val();
         if (data) {
+            // Update loading text
+            loadingText.textContent = '正在加载...';
+            
             // Calculate mood decay based on time passed
             const hoursPassed = (Date.now() - data.lastInteraction) / (1000 * 60 * 60);
             const decayedMood = Math.max(0, data.mood - hoursPassed * MOOD_DECAY_RATE);
@@ -149,10 +159,22 @@ function initFirebaseListener() {
                 isLocked: data.isLocked || false
             };
             updateCatDisplay();
+            
+            // Hide loading screen and show main content
+            loadingScreen.style.opacity = '0';
+            setTimeout(() => {
+                loadingScreen.style.display = 'none';
+                mainContent.style.opacity = '1';
+            }, 500);
         } else {
             // Initialize with default values if no data exists
+            loadingText.textContent = '初始化中...';
             saveCatState();
         }
+    }, (error) => {
+        // Handle connection error
+        loadingText.textContent = '连接失败，请刷新';
+        console.error('Firebase error:', error);
     });
 }
 
