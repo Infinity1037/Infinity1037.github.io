@@ -394,4 +394,9 @@ body.theme-night {
 /* Main content transition */
 #main-content {
     transition: opacity 0.5s ease;
+    visibility: hidden;
+}
+
+#main-content.loaded {
+    visibility: visible;
 }

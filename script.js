@@ -165,6 +165,7 @@ function initFirebaseListener() {
             setTimeout(() => {
                 loadingScreen.style.display = 'none';
                 mainContent.style.opacity = '1';
+                mainContent.classList.add('loaded');
             }, 500);
         } else {
             // Initialize with default values if no data exists
