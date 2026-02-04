@@ -16,6 +16,7 @@
 body {
     font-family: system-ui, -apple-system, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
     min-height: 100vh;
+    min-height: 100dvh; /* 动态视口高度，解决移动端地址栏问题 */
     color: var(--text-color);
     display: flex;
     justify-content: center;
@@ -25,6 +26,8 @@ body {
     animation: gradientFlow 15s ease infinite;
     overflow: hidden;
     position: relative;
+    /* 防止下拉刷新 */
+    overscroll-behavior: none;
 }
 
 /* 天气装饰层 */
@@ -236,6 +239,9 @@ h1 {
     position: relative;
     cursor: pointer;
     transition: transform 0.1s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    /* 增大触摸区域但保持视觉大小 */
+    padding: 15px;
+    margin: -15px;
 }
 
 .cat-static:active {
@@ -401,6 +407,7 @@ h1 {
 .action-btn {
     flex: 1;
     max-width: 140px;
+    min-height: 48px; /* 增大触摸区域 */
     background: rgba(255, 255, 255, 0.2);
     border: 1px solid rgba(255, 255, 255, 0.3);
     color: white;
@@ -408,18 +415,39 @@ h1 {
     border-radius: 20px;
     font-size: 16px;
     cursor: pointer;
-    transition: all 0.1s;
+    transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
     display: flex;
     align-items: center;
     justify-content: center;
     gap: 8px;
     position: relative;
     overflow: hidden;
+    /* 移动端优化 */
+    -webkit-tap-highlight-color: transparent;
+}
+
+/* 触摸涟漪效果 */
+.action-btn::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 0;
+    height: 0;
+    background: rgba(255, 255, 255, 0.3);
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    transition: width 0.3s, height 0.3s;
+}
+
+.action-btn:active::after {
+    width: 200px;
+    height: 200px;
 }
 
 .action-btn:active {
     transform: scale(0.94);
-    background: rgba(255, 255, 255, 0.3);
+    background: rgba(255, 255, 255, 0.35);
 }
 
 .btn-icon {
@@ -611,4 +639,28 @@ body.theme-night {
 
 #main-content.loaded {
     visibility: visible;
+}
+
+/* 安全区域适配（刘海屏/底部手势条） */
+@supports (padding: env(safe-area-inset-bottom)) {
+    .container {
+        padding-bottom: calc(1.5rem + env(safe-area-inset-bottom));
+        padding-top: calc(1.5rem + env(safe-area-inset-top));
+    }
+}
+
+/* 优化滚动性能 */
+.greeting-box {
+    will-change: transform;
+    transform: translateZ(0);
+}
+
+/* 减少动画在低电量模式下的消耗 */
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        transition-duration: 0.01ms !important;
+    }
 }
