@@ -3,10 +3,11 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
-    <meta name="theme-color" content="#667eea">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover, user-scalable=no">
+    <meta name="theme-color" id="theme-color" content="#667eea">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="format-detection" content="telephone=no">
     <!-- 预连接 Firebase 加速加载 -->
     <link rel="preconnect" href="https://www.gstatic.com" crossorigin>
     <link rel="preconnect" href="https://shared-cat-default-rtdb.asia-southeast1.firebasedatabase.app" crossorigin>
@@ -30,7 +31,11 @@
                     <path d="M140 55 L155 20 L115 45 Z" fill="#FFFFFF" opacity="0.3" />
                 </svg>
             </div>
-            <div class="loading-text">正在连接</div>
+            <div class="loading-text" id="loading-text">正在连接</div>
+            <div class="loading-progress">
+                <div class="loading-progress-bar"></div>
+            </div>
+            <button class="retry-btn" id="retry-btn">点击重试</button>
         </div>
     </div>
 

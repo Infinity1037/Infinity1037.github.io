@@ -42,32 +42,94 @@ let catState = {
     totalPets: 0
 };
 
+// ==================== DOM 缓存 ====================
+const DOM = {};
+function cacheDOM() {
+    DOM.time = document.getElementById('time');
+    DOM.date = document.getElementById('date');
+    DOM.greeting = document.getElementById('greeting');
+    DOM.quote = document.getElementById('quote');
+    DOM.quoteAuthor = document.getElementById('quote-author');
+    DOM.catSpeech = document.getElementById('cat-speech');
+    DOM.meowBubble = document.getElementById('meow-bubble');
+    DOM.cat = document.getElementById('cat');
+    DOM.eyesNormal = document.getElementById('eyes-normal');
+    DOM.eyesHappy = document.getElementById('eyes-happy');
+    DOM.eyesSad = document.getElementById('eyes-sad');
+    DOM.totalFeeds = document.getElementById('total-feeds');
+    DOM.totalPets = document.getElementById('total-pets');
+    DOM.hungerFill = document.getElementById('hunger-fill');
+    DOM.hungerNum = document.getElementById('hunger-num');
+    DOM.hungerRow = document.getElementById('hunger-row');
+    DOM.moodFill = document.getElementById('mood-fill');
+    DOM.moodNum = document.getElementById('mood-num');
+    DOM.moodRow = document.getElementById('mood-row');
+    DOM.energyFill = document.getElementById('energy-fill');
+    DOM.energyNum = document.getElementById('energy-num');
+    DOM.energyRow = document.getElementById('energy-row');
+    DOM.loadingScreen = document.getElementById('loading-screen');
+    DOM.loadingText = document.getElementById('loading-text');
+    DOM.retryBtn = document.getElementById('retry-btn');
+    DOM.mainContent = document.getElementById('main-content');
+    DOM.feedBtn = document.getElementById('feed-btn');
+    DOM.petBtn = document.getElementById('pet-btn');
+    DOM.weatherLayer = document.getElementById('weather-layer');
+    DOM.themeColor = document.getElementById('theme-color');
+}
+
+// 主题色对应表
+const THEME_COLORS = {
+    'theme-morning': '#fcb69f',
+    'theme-afternoon': '#667eea',
+    'theme-evening': '#26d0ce',
+    'theme-night': '#302b63'
+};
+
+// 属性最低值保护
+const MIN_STAT = 5;
+
 // ==================== 时间更新 ====================
+let lastSecond = -1;
 function updateTime() {
     const now = new Date();
     const hours = now.getHours();
+    const seconds = now.getSeconds();
 
-    document.getElementById('time').textContent =
-        `${String(hours).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
+    // 时间跳动效果
+    if (seconds !== lastSecond) {
+        lastSecond = seconds;
+        DOM.time.classList.add('tick');
+        setTimeout(() => DOM.time.classList.remove('tick'), 100);
+    }
 
-    document.getElementById('date').textContent =
+    DOM.time.textContent =
+        `${String(hours).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+
+    DOM.date.textContent =
         now.toLocaleDateString('zh-CN', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' });
 
     let theme;
     if (hours >= 5 && hours < 12) {
-        document.getElementById('greeting').textContent = '早上好';
+        DOM.greeting.textContent = '早上好';
         theme = 'theme-morning';
     } else if (hours >= 12 && hours < 18) {
-        document.getElementById('greeting').textContent = '下午好';
+        DOM.greeting.textContent = '下午好';
         theme = 'theme-afternoon';
     } else if (hours >= 18 && hours < 22) {
-        document.getElementById('greeting').textContent = '晚上好';
+        DOM.greeting.textContent = '晚上好';
         theme = 'theme-evening';
     } else {
-        document.getElementById('greeting').textContent = '夜深了';
+        DOM.greeting.textContent = '夜深了';
         theme = 'theme-night';
     }
-    document.body.className = theme;
+    
+    if (document.body.className !== theme) {
+        document.body.className = theme;
+        // 动态更新状态栏颜色
+        if (DOM.themeColor) {
+            DOM.themeColor.content = THEME_COLORS[theme];
+        }
+    }
 }
 
 // ==================== 名言 ====================
@@ -84,8 +146,8 @@ const quotes = [
 
 function updateQuote() {
     const q = quotes[Math.floor(Math.random() * quotes.length)];
-    document.getElementById('quote').textContent = q.text;
-    document.getElementById('quote-author').textContent = q.author ? `—— ${q.author}` : '';
+    DOM.quote.textContent = q.text;
+    DOM.quoteAuthor.textContent = q.author ? `—— ${q.author}` : '';
 }
 
 // ==================== 猫咪显示 ====================
@@ -96,21 +158,26 @@ function updateDisplay() {
     updateStat('energy', catState.energy);
 
     // 更新眼睛表情
-    document.getElementById('eyes-normal').style.display = 'none';
-    document.getElementById('eyes-happy').style.display = 'none';
-    document.getElementById('eyes-sad').style.display = 'none';
+    DOM.eyesNormal.style.display = 'none';
+    DOM.eyesHappy.style.display = 'none';
+    DOM.eyesSad.style.display = 'none';
 
+    // 更新猫咪状态样式
+    DOM.cat.classList.remove('sad', 'happy');
+    
     if (catState.mood >= 70) {
-        document.getElementById('eyes-happy').style.display = 'block';
+        DOM.eyesHappy.style.display = 'block';
+        DOM.cat.classList.add('happy');
     } else if (catState.mood < 30 || catState.hunger < 30) {
-        document.getElementById('eyes-sad').style.display = 'block';
+        DOM.eyesSad.style.display = 'block';
+        DOM.cat.classList.add('sad');
     } else {
-        document.getElementById('eyes-normal').style.display = 'block';
+        DOM.eyesNormal.style.display = 'block';
     }
 
     // 更新统计
-    document.getElementById('total-feeds').textContent = catState.totalFeeds;
-    document.getElementById('total-pets').textContent = catState.totalPets;
+    DOM.totalFeeds.textContent = catState.totalFeeds;
+    DOM.totalPets.textContent = catState.totalPets;
 }
 
 // 数字动画
@@ -128,9 +195,9 @@ function animateValue(obj, start, end, duration) {
 }
 
 function updateStat(stat, value) {
-    const fill = document.getElementById(`${stat}-fill`);
-    const num = document.getElementById(`${stat}-num`);
-    const row = document.getElementById(`${stat}-row`);
+    const fill = DOM[`${stat}Fill`];
+    const num = DOM[`${stat}Num`];
+    const row = DOM[`${stat}Row`];
     const currentVal = parseInt(num.textContent) || 0;
 
     fill.style.width = `${value}%`;
@@ -138,6 +205,9 @@ function updateStat(stat, value) {
     // 只有数值变化较大时才动画，避免频繁跳动
     if (Math.abs(value - currentVal) > 1) {
         animateValue(num, currentVal, value, 500);
+        // 数值变化时添加脉冲效果
+        num.classList.add('pulse');
+        setTimeout(() => num.classList.remove('pulse'), 300);
     } else {
         num.textContent = `${Math.round(value)}%`;
     }
@@ -165,20 +235,24 @@ function updateSpeech() {
     } else {
         speeches = SPEECHES.normal;
     }
-    document.getElementById('cat-speech').textContent = speeches[Math.floor(Math.random() * speeches.length)];
+    
+    // 对话切换动画
+    DOM.catSpeech.classList.add('changing');
+    setTimeout(() => {
+        DOM.catSpeech.textContent = speeches[Math.floor(Math.random() * speeches.length)];
+        DOM.catSpeech.classList.remove('changing');
+    }, 300);
 }
 
 function showBubble(text) {
-    const bubble = document.getElementById('meow-bubble');
-    bubble.textContent = text;
-    bubble.classList.add('show');
-    setTimeout(() => bubble.classList.remove('show'), 1500);
+    DOM.meowBubble.textContent = text;
+    DOM.meowBubble.classList.add('show');
+    setTimeout(() => DOM.meowBubble.classList.remove('show'), 1500);
 }
 
 function catBounce() {
-    const cat = document.getElementById('cat');
-    cat.classList.add('tapped');
-    setTimeout(() => cat.classList.remove('tapped'), 300);
+    DOM.cat.classList.add('tapped');
+    setTimeout(() => DOM.cat.classList.remove('tapped'), 300);
     if (navigator.vibrate) navigator.vibrate(30);
 }
 
@@ -217,6 +291,10 @@ function feedCat() {
     if (now - lastFeedTime < COOLDOWN) return;
     lastFeedTime = now;
 
+    // 按钮冷却效果
+    DOM.feedBtn.classList.add('cooldown');
+    setTimeout(() => DOM.feedBtn.classList.remove('cooldown'), COOLDOWN);
+
     catState.hunger = Math.min(MAX_STAT, catState.hunger + FEED_EFFECT.hunger);
     catState.mood = Math.min(MAX_STAT, catState.mood + FEED_EFFECT.mood);
     catState.lastUpdate = now;
@@ -234,6 +312,10 @@ function petCat() {
     if (now - lastPetTime < COOLDOWN) return;
     lastPetTime = now;
 
+    // 按钮冷却效果
+    DOM.petBtn.classList.add('cooldown');
+    setTimeout(() => DOM.petBtn.classList.remove('cooldown'), COOLDOWN);
+
     catState.mood = Math.min(MAX_STAT, catState.mood + PET_EFFECT.mood);
     catState.energy = Math.min(MAX_STAT, catState.energy + PET_EFFECT.energy);
     catState.lastUpdate = now;
@@ -247,11 +329,26 @@ function petCat() {
 }
 
 // ==================== Firebase 同步 ====================
+function showMainContent() {
+    DOM.loadingScreen.style.opacity = '0';
+    setTimeout(() => {
+        DOM.loadingScreen.style.display = 'none';
+        DOM.mainContent.style.opacity = '1';
+        DOM.mainContent.classList.add('loaded');
+    }, 400);
+}
+
 function initFirebase() {
-    const loadingScreen = document.getElementById('loading-screen');
-    const mainContent = document.getElementById('main-content');
+    // 设置超时
+    const timeout = setTimeout(() => {
+        DOM.loadingText.textContent = '连接超时';
+        DOM.retryBtn.style.display = 'block';
+        // 尝试使用本地缓存
+        loadFromLocalStorage();
+    }, 8000);
 
     catRef.on('value', (snapshot) => {
+        clearTimeout(timeout);
         const data = snapshot.val();
         if (data && data.lastUpdate) {
             const now = Date.now();
@@ -268,10 +365,10 @@ function initFirebase() {
             if (isNaN(mood)) mood = 70;
             if (isNaN(energy)) energy = 60;
 
-            // 应用衰减
-            hunger = Math.max(0, Math.min(100, hunger - hoursPassed * DECAY_PER_HOUR.hunger));
-            mood = Math.max(0, Math.min(100, mood - hoursPassed * DECAY_PER_HOUR.mood));
-            energy = Math.max(0, Math.min(100, energy - hoursPassed * DECAY_PER_HOUR.energy));
+            // 应用衰减，但保持最低值
+            hunger = Math.max(MIN_STAT, Math.min(100, hunger - hoursPassed * DECAY_PER_HOUR.hunger));
+            mood = Math.max(MIN_STAT, Math.min(100, mood - hoursPassed * DECAY_PER_HOUR.mood));
+            energy = Math.max(MIN_STAT, Math.min(100, energy - hoursPassed * DECAY_PER_HOUR.energy));
 
             catState = {
                 hunger: hunger,
@@ -282,15 +379,11 @@ function initFirebase() {
                 totalPets: Number(data.totalPets) || 0
             };
 
+            // 保存到本地缓存
+            saveToLocalStorage();
             updateDisplay();
             updateSpeech();
-
-            loadingScreen.style.opacity = '0';
-            setTimeout(() => {
-                loadingScreen.style.display = 'none';
-                mainContent.style.opacity = '1';
-                mainContent.classList.add('loaded');
-            }, 400);
+            showMainContent();
         } else {
             // 数据不存在或无效，使用默认值并保存
             catState = {
@@ -302,20 +395,39 @@ function initFirebase() {
                 totalPets: 0
             };
             saveCatState();
+            saveToLocalStorage();
             updateDisplay();
             updateSpeech();
-
-            loadingScreen.style.opacity = '0';
-            setTimeout(() => {
-                loadingScreen.style.display = 'none';
-                mainContent.style.opacity = '1';
-                mainContent.classList.add('loaded');
-            }, 400);
+            showMainContent();
         }
     }, (error) => {
-        document.querySelector('.loading-text').textContent = '连接失败';
+        clearTimeout(timeout);
+        DOM.loadingText.textContent = '连接失败';
+        DOM.retryBtn.style.display = 'block';
         console.error(error);
+        // 尝试使用本地缓存
+        loadFromLocalStorage();
     });
+}
+
+// 本地缓存支持
+function saveToLocalStorage() {
+    try {
+        localStorage.setItem('catState', JSON.stringify(catState));
+    } catch (e) { }
+}
+
+function loadFromLocalStorage() {
+    try {
+        const saved = localStorage.getItem('catState');
+        if (saved) {
+            catState = JSON.parse(saved);
+            updateDisplay();
+            updateSpeech();
+            showMainContent();
+            DOM.loadingText.textContent = '离线模式';
+        }
+    } catch (e) { }
 }
 
 function saveCatState() {
@@ -327,6 +439,7 @@ function saveCatState() {
         totalFeeds: catState.totalFeeds,
         totalPets: catState.totalPets
     });
+    saveToLocalStorage();
 }
 
 // ==================== 额外功能 ====================
@@ -344,9 +457,8 @@ function blinkCat() {
 
 // 动态天气
 function updateWeather(hours) {
-    const layer = document.getElementById('weather-layer');
-    if (!layer) return;
-    layer.innerHTML = ''; // 清空现有元素
+    if (!DOM.weatherLayer) return;
+    DOM.weatherLayer.innerHTML = ''; // 清空现有元素
 
     if (hours >= 6 && hours < 18) {
         // 白天：云朵
@@ -357,7 +469,7 @@ function updateWeather(hours) {
             cloud.style.animationDuration = (25 + Math.random() * 25) + 's';
             cloud.style.animationDelay = -(Math.random() * 20) + 's';
             cloud.style.transform = `scale(${0.6 + Math.random() * 0.6})`;
-            layer.appendChild(cloud);
+            DOM.weatherLayer.appendChild(cloud);
         }
     } else {
         // 晚上：星星
@@ -368,13 +480,16 @@ function updateWeather(hours) {
             star.style.top = Math.random() * 70 + '%';
             star.style.width = star.style.height = (2 + Math.random() * 3) + 'px';
             star.style.animationDelay = Math.random() * 3 + 's';
-            layer.appendChild(star);
+            DOM.weatherLayer.appendChild(star);
         }
     }
 }
 
 // ==================== 初始化 ====================
 document.addEventListener('DOMContentLoaded', function () {
+    // 缓存 DOM 元素
+    cacheDOM();
+    
     updateTime();
     setInterval(updateTime, 1000);
 
@@ -394,25 +509,29 @@ document.addEventListener('DOMContentLoaded', function () {
     initFirebase();
 
     // 事件绑定
-    const feedBtn = document.getElementById('feed-btn');
-    const petBtn = document.getElementById('pet-btn');
-    const catEl = document.getElementById('cat');
-
-    feedBtn.addEventListener('pointerdown', (e) => {
+    DOM.feedBtn.addEventListener('pointerdown', (e) => {
         e.preventDefault();
         feedCat();
         createParticles(e.clientX, e.clientY, '🐟');
     });
 
-    petBtn.addEventListener('pointerdown', (e) => {
+    DOM.petBtn.addEventListener('pointerdown', (e) => {
         e.preventDefault();
         petCat();
         createParticles(e.clientX, e.clientY, '💖');
     });
 
-    catEl.addEventListener('pointerdown', (e) => {
+    DOM.cat.addEventListener('pointerdown', (e) => {
         showBubble('喵~');
         catBounce();
         createParticles(e.clientX, e.clientY, '⭐');
     });
+    
+    // 重试按钮
+    DOM.retryBtn.addEventListener('click', () => {
+        DOM.retryBtn.style.display = 'none';
+        DOM.loadingText.textContent = '正在重连';
+        initFirebase();
+    });
+    
 });

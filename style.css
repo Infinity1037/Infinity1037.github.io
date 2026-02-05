@@ -195,12 +195,19 @@ h1 {
 
 .cat-speech {
     background: rgba(255, 255, 255, 0.25);
-    padding: 8px 16px;
+    padding: 10px 18px;
     border-radius: 16px;
-    font-size: 14px;
+    font-size: 15px;
     margin-bottom: 10px;
     animation: speechPulse 3s ease-in-out infinite;
     backdrop-filter: blur(4px);
+    /* 对话切换动画 */
+    transition: opacity 0.3s, transform 0.3s;
+}
+
+.cat-speech.changing {
+    opacity: 0;
+    transform: scale(0.95);
 }
 
 @keyframes speechPulse {
@@ -269,6 +276,16 @@ h1 {
 .cat-svg {
     width: 100%;
     filter: drop-shadow(0 6px 15px rgba(0, 0, 0, 0.2));
+    transition: filter 0.3s;
+}
+
+/* 猫咪状态不佳时的视觉提示 */
+.cat-static.sad .cat-svg {
+    filter: drop-shadow(0 6px 20px rgba(255, 100, 100, 0.4));
+}
+
+.cat-static.happy .cat-svg {
+    filter: drop-shadow(0 6px 20px rgba(255, 200, 100, 0.4));
 }
 
 /* 眨眼动画 */
@@ -285,17 +302,17 @@ h1 {
     position: absolute;
     top: -15px;
     right: -30px;
-    background: rgba(255, 255, 255, 0.95);
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(255, 240, 245, 0.95));
     color: #333;
-    padding: 6px 12px;
+    padding: 8px 14px;
     border-radius: 14px;
-    font-size: 13px;
+    font-size: 14px;
     font-weight: 600;
     opacity: 0;
     transform: scale(0.5) translateY(10px);
     transition: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
     pointer-events: none;
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 4px 15px rgba(255, 150, 180, 0.3), 0 2px 6px rgba(0, 0, 0, 0.1);
     white-space: nowrap;
     z-index: 10;
 }
@@ -303,20 +320,32 @@ h1 {
 .meow-bubble.show {
     opacity: 1;
     transform: scale(1) translateY(0);
+    animation: bubblePop 0.4s ease;
+}
+
+@keyframes bubblePop {
+    0% { transform: scale(0.5) translateY(10px); }
+    50% { transform: scale(1.1) translateY(-5px); }
+    100% { transform: scale(1) translateY(0); }
 }
 
 .stats-simple {
     width: 100%;
     margin: 15px 0;
+    padding: 12px;
     display: flex;
     flex-direction: column;
     gap: 12px;
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 16px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .stat-item {
     display: flex;
     align-items: center;
     gap: 10px;
+    padding: 4px 0;
 }
 
 .stat-item.warning .stat-icon {
@@ -347,9 +376,9 @@ h1 {
 
 .stat-bar {
     flex: 1;
-    height: 10px;
+    height: 12px;
     background: rgba(0, 0, 0, 0.15);
-    border-radius: 5px;
+    border-radius: 6px;
     overflow: hidden;
 }
 
@@ -388,12 +417,24 @@ h1 {
 }
 
 .stat-num {
-    width: 36px;
+    width: 40px;
     text-align: right;
-    font-size: 12px;
-    font-weight: 500;
+    font-size: 13px;
+    font-weight: 600;
     font-variant-numeric: tabular-nums;
-    opacity: 0.8;
+    opacity: 0.9;
+    transition: transform 0.2s, color 0.3s;
+}
+
+.stat-num.pulse {
+    animation: numPulse 0.3s ease;
+    color: #fff;
+}
+
+@keyframes numPulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.2); }
+    100% { transform: scale(1); }
 }
 
 .cat-actions {
@@ -450,12 +491,33 @@ h1 {
     background: rgba(255, 255, 255, 0.35);
 }
 
+/* 按钮禁用状态（冷却中） */
+.action-btn.cooldown {
+    opacity: 0.6;
+    pointer-events: none;
+}
+
+.action-btn.cooldown .btn-icon {
+    animation: iconSpin 0.3s ease;
+}
+
+@keyframes iconSpin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
 .btn-icon {
-    font-size: 20px;
+    font-size: 22px;
+    transition: transform 0.2s;
+}
+
+.action-btn:active .btn-icon {
+    transform: scale(1.2);
 }
 
 .btn-text {
     font-weight: 500;
+    font-size: 15px;
 }
 
 .particle {
@@ -484,9 +546,12 @@ h1 {
 }
 
 .stats-info {
-    font-size: 12px;
-    opacity: 0.6;
-    margin-top: 10px;
+    font-size: 13px;
+    opacity: 0.7;
+    margin-top: 12px;
+    padding: 8px 12px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
 }
 
 .time-container {
@@ -499,9 +564,15 @@ h1 {
 #time {
     font-size: 3.2rem;
     font-weight: 500;
-    letter-spacing: 1px;
+    letter-spacing: 2px;
     font-variant-numeric: tabular-nums;
     line-height: 1;
+    /* 时间变化动画 */
+    transition: transform 0.1s;
+}
+
+#time.tick {
+    transform: scale(1.02);
 }
 
 #date {
@@ -586,6 +657,29 @@ body.theme-night {
     animation: loadingFloat 1.5s ease-in-out infinite;
 }
 
+/* 加载进度条 */
+.loading-progress {
+    width: 120px;
+    height: 4px;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 2px;
+    margin: 15px auto 0;
+    overflow: hidden;
+}
+
+.loading-progress-bar {
+    height: 100%;
+    background: rgba(255, 255, 255, 0.8);
+    border-radius: 2px;
+    animation: loadingBar 2s ease-in-out infinite;
+}
+
+@keyframes loadingBar {
+    0% { width: 0%; transform: translateX(0); }
+    50% { width: 70%; }
+    100% { width: 100%; transform: translateX(0); }
+}
+
 @keyframes loadingFloat {
 
     0%,
@@ -604,6 +698,24 @@ body.theme-night {
     font-size: 1rem;
     letter-spacing: 2px;
     opacity: 0.8;
+}
+
+/* 连接失败时的重试按钮 */
+.retry-btn {
+    margin-top: 20px;
+    padding: 12px 24px;
+    background: rgba(255, 255, 255, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: 20px;
+    color: white;
+    font-size: 14px;
+    cursor: pointer;
+    display: none;
+}
+
+.retry-btn:active {
+    transform: scale(0.95);
+    background: rgba(255, 255, 255, 0.3);
 }
 
 .loading-text::after {
@@ -662,5 +774,63 @@ body.theme-night {
     *::after {
         animation-duration: 0.01ms !important;
         transition-duration: 0.01ms !important;
+    }
+}
+
+/* 横屏提示 */
+@media (max-height: 500px) and (orientation: landscape) {
+    .greeting-box {
+        padding: 1rem;
+    }
+    
+    .cat-static {
+        width: 80px;
+    }
+    
+    h1 {
+        font-size: 2rem;
+    }
+    
+    #time {
+        font-size: 2.5rem;
+    }
+    
+    .stats-simple {
+        margin: 10px 0;
+        gap: 8px;
+    }
+}
+
+/* 超小屏幕优化 */
+@media (max-width: 320px) {
+    .greeting-box {
+        padding: 1rem;
+    }
+    
+    h1 {
+        font-size: 1.8rem;
+    }
+    
+    .cat-static {
+        width: 80px;
+    }
+    
+    .action-btn {
+        padding: 12px 0;
+    }
+    
+    #time {
+        font-size: 2.2rem;
+    }
+}
+
+/* 触摸反馈增强 */
+@media (hover: none) and (pointer: coarse) {
+    .action-btn:active {
+        transform: scale(0.92);
+    }
+    
+    .cat-static:active {
+        transform: scale(0.85) !important;
     }
 }
