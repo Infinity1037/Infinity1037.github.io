@@ -1,3 +1,4 @@
+(function() {
 // ==================== Firebase 配置 ====================
 const firebaseConfig = {
     apiKey: "AIzaSyAo5yc2z-Q6YV5nbfTLBOcB1yR8IvaC-S0",
@@ -251,6 +252,7 @@ function initFortune() {
     const saved = localStorage.getItem('fortune_date');
     if (saved === today) {
         const data = JSON.parse(localStorage.getItem('fortune_data') || '{}');
+        // 刷新页面后只恢复显示，不重复应用 bonus（bonus 仅在首次抽取时生效，这是预期行为）
         showFortuneResult(data);
         fortuneDrawn = true;
     }
@@ -319,9 +321,14 @@ function spawnFish() {
 
     // 游走后自动消失
     setTimeout(() => {
-        if (fish.parentNode) {
+        if (fish.parentNode && !fish.classList.contains('caught')) {
             fish.classList.add('fish-gone');
-            setTimeout(() => { fish.remove(); activeFishCount--; }, 300);
+            setTimeout(() => {
+                if (!fish.classList.contains('caught')) {
+                    fish.remove();
+                    activeFishCount--;
+                }
+            }, 300);
         }
     }, 4000 + Math.random() * 2000);
 }
@@ -380,6 +387,7 @@ const ACHIEVEMENTS = [
     { id: 'all_high', icon: '🌈', name: '完美状态', check: s => s.hunger >= 90 && s.mood >= 90 && s.energy >= 90 },
 ];
 
+let lastBadgeHtml = '';
 function updateBadges() {
     if (!DOM.badgesRow) return;
     let html = '';
@@ -393,7 +401,10 @@ function updateBadges() {
     if (count === 0) {
         html = '<span class="badge-hint">还没有徽章，继续加油~</span>';
     }
-    DOM.badgesRow.innerHTML = html;
+    if (html !== lastBadgeHtml) {
+        lastBadgeHtml = html;
+        DOM.badgesRow.innerHTML = html;
+    }
 }
 
 // ==================== 随机事件 ====================
@@ -472,10 +483,17 @@ function closeMsgOverlay() {
     input.value = '';
 }
 
+let lastMsgTime = 0;
+const MSG_COOLDOWN = 5000;
+
 function sendMessage() {
     const input = document.getElementById('msg-input');
     const text = input.value.trim();
     if (!text) return;
+
+    const now = Date.now();
+    if (now - lastMsgTime < MSG_COOLDOWN) return;
+    lastMsgTime = now;
 
     msgRef.push({
         text: text,
@@ -573,7 +591,15 @@ function updateDisplay() {
 
     // 更新连续签到
     DOM.streakCount.textContent = catState.streak || 0;
-    updateStreak();
+
+    // 睡眠模式禁用按钮
+    const actionBtns = [DOM.feedBtn, DOM.petBtn, DOM.playBtn];
+    actionBtns.forEach(btn => {
+        if (btn) {
+            btn.disabled = isSleeping;
+            btn.style.opacity = isSleeping ? '0.4' : '';
+        }
+    });
 
     // 更新徽章
     updateBadges();
@@ -670,7 +696,12 @@ function catBounce() {
 }
 
 // ==================== 粒子特效 ====================
+let particleLayer = null;
 function createParticles(x, y, emoji) {
+    if (!particleLayer) {
+        particleLayer = document.getElementById('particle-layer');
+        if (!particleLayer) return;
+    }
     for (let i = 0; i < 6; i++) {
         const p = document.createElement('div');
         p.className = 'particle';
@@ -687,7 +718,7 @@ function createParticles(x, y, emoji) {
         p.style.left = x + 'px';
         p.style.top = y + 'px';
 
-        document.body.appendChild(p);
+        particleLayer.appendChild(p);
 
         // 动画结束后移除
         setTimeout(() => p.remove(), 1000);
@@ -701,6 +732,7 @@ let lastPlayTime = 0;
 const COOLDOWN = 300;
 
 function feedCat() {
+    if (isSleeping) { showBubble('猫咪在睡觉，别吵它~'); return; }
     const now = Date.now();
     if (now - lastFeedTime < COOLDOWN) return;
     lastFeedTime = now;
@@ -722,6 +754,7 @@ function feedCat() {
 }
 
 function petCat() {
+    if (isSleeping) { showBubble('嗓，让它再睡会儿~'); return; }
     const now = Date.now();
     if (now - lastPetTime < COOLDOWN) return;
     lastPetTime = now;
@@ -743,6 +776,7 @@ function petCat() {
 }
 
 function playCat() {
+    if (isSleeping) { showBubble('猫咪正在做美梦~'); return; }
     const now = Date.now();
     if (now - lastPlayTime < COOLDOWN) return;
     lastPlayTime = now;
@@ -819,6 +853,7 @@ function initFirebase() {
 
             // 保存到本地缓存
             saveToLocalStorage();
+            updateStreak();
             updateDisplay();
             updateSpeech();
             showMainContent();
@@ -837,6 +872,7 @@ function initFirebase() {
             };
             saveCatState();
             saveToLocalStorage();
+            updateStreak();
             updateDisplay();
             updateSpeech();
             showMainContent();
@@ -872,11 +908,11 @@ function loadFromLocalStorage() {
 }
 
 function saveCatState() {
-    catRef.set({
+    catRef.update({
         hunger: catState.hunger,
         mood: catState.mood,
         energy: catState.energy,
-        lastUpdate: catState.lastUpdate,
+        lastUpdate: firebase.database.ServerValue.TIMESTAMP,
         totalFeeds: catState.totalFeeds,
         totalPets: catState.totalPets,
         totalPlays: catState.totalPlays || 0,
@@ -900,11 +936,15 @@ function blinkCat() {
 }
 
 // 动态天气
+let lastWeatherMode = null;
 function updateWeather(hours) {
     if (!DOM.weatherLayer) return;
-    DOM.weatherLayer.innerHTML = ''; // 清空现有元素
+    const mode = (hours >= 6 && hours < 18) ? 'day' : 'night';
+    if (mode === lastWeatherMode) return;
+    lastWeatherMode = mode;
+    DOM.weatherLayer.innerHTML = '';
 
-    if (hours >= 6 && hours < 18) {
+    if (mode === 'day') {
         // 白天：云朵
         for (let i = 0; i < 4; i++) {
             const cloud = document.createElement('div');
@@ -962,6 +1002,13 @@ function initApp() {
     setInterval(() => updateWeather(new Date().getHours()), 3600000);
 
     initFirebase();
+
+    // 离线重连后自动同步本地状态
+    database.ref('.info/connected').on('value', (snap) => {
+        if (snap.val() === true && catState.lastUpdate) {
+            saveCatState();
+        }
+    });
 
     // 留言板
     initMsgBoard();
@@ -1062,3 +1109,4 @@ document.addEventListener('DOMContentLoaded', function () {
     // 自动聚焦输入框
     setTimeout(() => authInput.focus(), 300);
 });
+})();

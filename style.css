@@ -42,6 +42,18 @@ body {
     overflow: hidden;
 }
 
+/* 粒子层 */
+.particle-layer {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 100;
+    overflow: hidden;
+}
+
 /* 云朵 */
 .cloud {
     position: absolute;
@@ -1423,5 +1435,21 @@ body.theme-night {
     
     .cat-static:active {
         transform: scale(0.85) !important;
+    }
+}
+
+/* 低端设备性能优化 - 禁用动画 */
+@media (prefers-reduced-motion: reduce) {
+    * {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
+    
+    body {
+        background: linear-gradient(-45deg, #667eea, #764ba2);
+        background-size: 100% 100%;
+        animation: none;
     }
 }
