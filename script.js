@@ -381,33 +381,25 @@ function catchFish(fish, e) {
     fish.classList.add('caught');
     activeFishCount--;
 
-    // 使用 transaction 保证并发安全
-    catRef.transaction((current) => {
-        if (!current) return null;
-        const newState = {
-            hunger: Math.min(MAX_STAT, current.hunger + 8),
-            mood: Math.min(MAX_STAT, current.mood + 3),
-            lastUpdate: Date.now(),
-            totalFeeds: (current.totalFeeds || 0) + 1
-        };
-        // 应用到本地状态
-        catState.hunger = newState.hunger;
-        catState.mood = newState.mood;
-        catState.lastUpdate = newState.lastUpdate;
-        catState.totalFeeds = newState.totalFeeds;
-        return newState;
-    }, (error) => {
-        if (error) {
-            console.error('Fish catch transaction error:', error);
-        }
-    });
+    catState.hunger = Math.min(MAX_STAT, catState.hunger + 8);
+    catState.mood = Math.min(MAX_STAT, catState.mood + 3);
+    catState.lastUpdate = Date.now();
+    catState.totalFeeds = (catState.totalFeeds || 0) + 1;
 
     showBubble('抓到鱼了!');
     catBounce();
+    updateDisplay();
     createParticles(e.clientX, e.clientY, '🐟');
     if (navigator.vibrate) navigator.vibrate(15);
+    saveToLocalStorage();
 
-    // 捕获动画
+    catRef.update({
+        hunger: catState.hunger,
+        mood: catState.mood,
+        lastUpdate: firebase.database.ServerValue.TIMESTAMP,
+        totalFeeds: firebase.database.ServerValue.increment(1)
+    });
+
     fish.style.transform = 'scale(1.5)';
     fish.style.opacity = '0';
     setTimeout(() => fish.remove(), 300);
@@ -490,33 +482,25 @@ function triggerRandomEvent() {
 
     const evt = RANDOM_EVENTS[Math.floor(Math.random() * RANDOM_EVENTS.length)];
 
-    // 使用 transaction 保证并发安全
-    catRef.transaction((current) => {
-        if (!current) return null;
-        const newState = {
-            hunger: current.hunger,
-            mood: current.mood,
-            energy: current.energy,
-            lastUpdate: Date.now()
-        };
-        if (evt.bonus.hunger) newState.hunger = Math.min(MAX_STAT, current.hunger + evt.bonus.hunger);
-        if (evt.bonus.mood) newState.mood = Math.min(MAX_STAT, current.mood + evt.bonus.mood);
-        if (evt.bonus.energy) newState.energy = Math.min(MAX_STAT, current.energy + evt.bonus.energy);
-        // 应用到本地状态
-        catState.hunger = newState.hunger;
-        catState.mood = newState.mood;
-        catState.energy = newState.energy;
-        catState.lastUpdate = newState.lastUpdate;
-        return newState;
-    }, (error) => {
-        if (error) {
-            console.error('Random event transaction error:', error);
-            return;
-        }
-        updateDisplay();
-    });
+    const updates = { lastUpdate: firebase.database.ServerValue.TIMESTAMP };
+    if (evt.bonus.hunger) {
+        catState.hunger = Math.min(MAX_STAT, catState.hunger + evt.bonus.hunger);
+        updates.hunger = catState.hunger;
+    }
+    if (evt.bonus.mood) {
+        catState.mood = Math.min(MAX_STAT, catState.mood + evt.bonus.mood);
+        updates.mood = catState.mood;
+    }
+    if (evt.bonus.energy) {
+        catState.energy = Math.min(MAX_STAT, catState.energy + evt.bonus.energy);
+        updates.energy = catState.energy;
+    }
+    catState.lastUpdate = Date.now();
 
-    // 显示弹窗
+    updateDisplay();
+    saveToLocalStorage();
+    catRef.update(updates);
+
     DOM.eventIcon.textContent = evt.icon;
     DOM.eventText.textContent = evt.text;
     DOM.eventPopup.classList.add('show');
@@ -612,16 +596,29 @@ function getCatLevel() {
 
 function updateStreak() {
     const today = new Date().toISOString().slice(0, 10);
-    if (catState.lastVisitDate === today) return;
-
     const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
-    if (catState.lastVisitDate === yesterday) {
-        catState.streak = (catState.streak || 0) + 1;
-    } else if (catState.lastVisitDate !== today) {
-        catState.streak = 1;
-    }
-    catState.lastVisitDate = today;
-    saveCatState();
+    
+    catRef.transaction((current) => {
+        if (!current) return;
+        const currentLastVisit = current.lastVisitDate || '';
+        
+        if (currentLastVisit === today) {
+            // 今天已经访问过，不更新
+            return;
+        }
+        
+        const newState = { ...current };
+        if (currentLastVisit === yesterday) {
+            newState.streak = (current.streak || 0) + 1;
+        } else {
+            newState.streak = 1;
+        }
+        newState.lastVisitDate = today;
+        
+        catState.streak = newState.streak;
+        catState.lastVisitDate = newState.lastVisitDate;
+        return newState;
+    });
 }
 
 function updateDisplay() {
@@ -811,72 +808,56 @@ function feedCat() {
     if (now - lastFeedTime < COOLDOWN) return;
     lastFeedTime = now;
 
-    // 按钮冷却效果
     DOM.feedBtn.classList.add('cooldown');
     setTimeout(() => DOM.feedBtn.classList.remove('cooldown'), COOLDOWN);
 
-    // 使用 transaction 保证并发安全
-    catRef.transaction((current) => {
-        if (!current) return null;
-        const newState = {
-            hunger: Math.min(MAX_STAT, current.hunger + FEED_EFFECT.hunger),
-            mood: Math.min(MAX_STAT, current.mood + FEED_EFFECT.mood),
-            lastUpdate: now,
-            totalFeeds: (current.totalFeeds || 0) + 1
-        };
-        // 应用到本地状态
-        catState.hunger = newState.hunger;
-        catState.mood = newState.mood;
-        catState.lastUpdate = newState.lastUpdate;
-        catState.totalFeeds = newState.totalFeeds;
-        return newState;
-    }, (error) => {
-        if (error) {
-            console.error('Feed transaction error:', error);
-        }
-    });
+    // 乐观更新本地状态，立即刷新界面
+    catState.hunger = Math.min(MAX_STAT, catState.hunger + FEED_EFFECT.hunger);
+    catState.mood = Math.min(MAX_STAT, catState.mood + FEED_EFFECT.mood);
+    catState.lastUpdate = now;
+    catState.totalFeeds = (catState.totalFeeds || 0) + 1;
 
     showBubble(FEED_RESPONSES[Math.floor(Math.random() * FEED_RESPONSES.length)]);
     catBounce();
     updateDisplay();
     updateSpeech();
+    saveToLocalStorage();
+
+    // 同步到服务器（原子操作）
+    catRef.update({
+        hunger: catState.hunger,
+        mood: catState.mood,
+        lastUpdate: firebase.database.ServerValue.TIMESTAMP,
+        totalFeeds: firebase.database.ServerValue.increment(1)
+    });
 }
 
 function petCat() {
-    if (isSleeping) { showBubble('嗓，让它再睡会儿~'); return; }
+    if (isSleeping) { showBubble('嘳，让它再睡会儿~'); return; }
     const now = Date.now();
     if (now - lastPetTime < COOLDOWN) return;
     lastPetTime = now;
 
-    // 按钮冷却效果
     DOM.petBtn.classList.add('cooldown');
     setTimeout(() => DOM.petBtn.classList.remove('cooldown'), COOLDOWN);
 
-    // 使用 transaction 保证并发安全
-    catRef.transaction((current) => {
-        if (!current) return null;
-        const newState = {
-            mood: Math.min(MAX_STAT, current.mood + PET_EFFECT.mood),
-            energy: Math.min(MAX_STAT, current.energy + PET_EFFECT.energy),
-            lastUpdate: now,
-            totalPets: (current.totalPets || 0) + 1
-        };
-        // 应用到本地状态
-        catState.mood = newState.mood;
-        catState.energy = newState.energy;
-        catState.lastUpdate = newState.lastUpdate;
-        catState.totalPets = newState.totalPets;
-        return newState;
-    }, (error) => {
-        if (error) {
-            console.error('Pet transaction error:', error);
-        }
-    });
+    catState.mood = Math.min(MAX_STAT, catState.mood + PET_EFFECT.mood);
+    catState.energy = Math.min(MAX_STAT, catState.energy + PET_EFFECT.energy);
+    catState.lastUpdate = now;
+    catState.totalPets = (catState.totalPets || 0) + 1;
 
     showBubble(PET_RESPONSES[Math.floor(Math.random() * PET_RESPONSES.length)]);
     catBounce();
     updateDisplay();
     updateSpeech();
+    saveToLocalStorage();
+
+    catRef.update({
+        mood: catState.mood,
+        energy: catState.energy,
+        lastUpdate: firebase.database.ServerValue.TIMESTAMP,
+        totalPets: firebase.database.ServerValue.increment(1)
+    });
 }
 
 function playCat() {
@@ -888,33 +869,25 @@ function playCat() {
     DOM.playBtn.classList.add('cooldown');
     setTimeout(() => DOM.playBtn.classList.remove('cooldown'), COOLDOWN);
 
-    // 使用 transaction 保证并发安全
-    catRef.transaction((current) => {
-        if (!current) return null;
-        const newState = {
-            energy: Math.min(MAX_STAT, current.energy + PLAY_EFFECT.energy),
-            mood: Math.min(MAX_STAT, current.mood + PLAY_EFFECT.mood),
-            hunger: Math.max(MIN_STAT, current.hunger + PLAY_EFFECT.hunger),
-            lastUpdate: now,
-            totalPlays: (current.totalPlays || 0) + 1
-        };
-        // 应用到本地状态
-        catState.energy = newState.energy;
-        catState.mood = newState.mood;
-        catState.hunger = newState.hunger;
-        catState.lastUpdate = newState.lastUpdate;
-        catState.totalPlays = newState.totalPlays;
-        return newState;
-    }, (error) => {
-        if (error) {
-            console.error('Play transaction error:', error);
-        }
-    });
+    catState.energy = Math.min(MAX_STAT, catState.energy + PLAY_EFFECT.energy);
+    catState.mood = Math.min(MAX_STAT, catState.mood + PLAY_EFFECT.mood);
+    catState.hunger = Math.max(MIN_STAT, catState.hunger + PLAY_EFFECT.hunger);
+    catState.lastUpdate = now;
+    catState.totalPlays = (catState.totalPlays || 0) + 1;
 
     showBubble(PLAY_RESPONSES[Math.floor(Math.random() * PLAY_RESPONSES.length)]);
     catBounce();
     updateDisplay();
     updateSpeech();
+    saveToLocalStorage();
+
+    catRef.update({
+        energy: catState.energy,
+        mood: catState.mood,
+        hunger: catState.hunger,
+        lastUpdate: firebase.database.ServerValue.TIMESTAMP,
+        totalPlays: firebase.database.ServerValue.increment(1)
+    });
 }
 
 // ==================== Firebase 同步 ====================
@@ -927,12 +900,12 @@ function showMainContent() {
     }, 400);
 }
 
+let isFirstLoad = true;
+
 function initFirebase() {
-    // 设置超时
     const timeout = setTimeout(() => {
         DOM.loadingText.textContent = '连接超时';
         DOM.retryBtn.style.display = 'block';
-        // 尝试使用本地缓存
         loadFromLocalStorage();
     }, 8000);
 
@@ -944,22 +917,19 @@ function initFirebase() {
             const lastUpdate = Number(data.lastUpdate) || now;
             const hoursPassed = Math.max(0, (now - lastUpdate) / 3600000);
 
-            // 计算衰减后的值，确保不为NaN
             let hunger = Number(data.hunger);
             let mood = Number(data.mood);
             let energy = Number(data.energy);
 
-            // 如果是NaN，使用默认值
             if (isNaN(hunger)) hunger = 80;
             if (isNaN(mood)) mood = 70;
             if (isNaN(energy)) energy = 60;
 
-            // 应用衰减，但保持最低值
             hunger = Math.max(MIN_STAT, Math.min(100, hunger - hoursPassed * DECAY_PER_HOUR.hunger));
             mood = Math.max(MIN_STAT, Math.min(100, mood - hoursPassed * DECAY_PER_HOUR.mood));
             energy = Math.max(MIN_STAT, Math.min(100, energy - hoursPassed * DECAY_PER_HOUR.energy));
 
-            const remoteState = {
+            catState = {
                 hunger: hunger,
                 mood: mood,
                 energy: energy,
@@ -971,16 +941,17 @@ function initFirebase() {
                 lastVisitDate: data.lastVisitDate || ''
             };
 
-            catState = remoteState;
-
-            // 保存到本地缓存
             saveToLocalStorage();
-            updateStreak();
             updateDisplay();
             updateSpeech();
-            showMainContent();
+
+            // 只在首次加载时执行
+            if (isFirstLoad) {
+                isFirstLoad = false;
+                updateStreak();
+                showMainContent();
+            }
         } else {
-            // 数据不存在或无效，使用默认值并保存
             catState = {
                 hunger: 80,
                 mood: 70,
@@ -994,17 +965,20 @@ function initFirebase() {
             };
             saveCatState();
             saveToLocalStorage();
-            updateStreak();
             updateDisplay();
             updateSpeech();
-            showMainContent();
+
+            if (isFirstLoad) {
+                isFirstLoad = false;
+                updateStreak();
+                showMainContent();
+            }
         }
     }, (error) => {
         clearTimeout(timeout);
         DOM.loadingText.textContent = '连接失败';
         DOM.retryBtn.style.display = 'block';
         console.error(error);
-        // 尝试使用本地缓存
         loadFromLocalStorage();
     });
 }
@@ -1035,9 +1009,6 @@ function saveCatState() {
         mood: catState.mood,
         energy: catState.energy,
         lastUpdate: firebase.database.ServerValue.TIMESTAMP,
-        totalFeeds: catState.totalFeeds,
-        totalPets: catState.totalPets,
-        totalPlays: catState.totalPlays || 0,
         streak: catState.streak || 0,
         lastVisitDate: catState.lastVisitDate || ''
     });
@@ -1168,7 +1139,21 @@ function initApp() {
         longPressTimer = setTimeout(() => {
             isLongPress = true;
             showBubble(LONG_PRESS_RESPONSES[Math.floor(Math.random() * LONG_PRESS_RESPONSES.length)]);
-            catState.mood = Math.min(MAX_STAT, catState.mood + 5);
+            // 使用 transaction 保证并发安全
+            catRef.transaction((current) => {
+                if (!current) return null;
+                const newState = {
+                    ...current,  // 保留所有现有字段
+                    mood: Math.min(MAX_STAT, current.mood + 5)
+                };
+                // 应用到本地状态
+                catState.mood = newState.mood;
+                return newState;
+            }, (error) => {
+                if (error) {
+                    console.error('Long press transaction error:', error);
+                }
+            });
             updateDisplay();
             if (navigator.vibrate) navigator.vibrate([30, 50, 30]);
             for (let i = 0; i < 3; i++) {
