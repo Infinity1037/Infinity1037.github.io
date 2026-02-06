@@ -15,6 +15,7 @@ const database = firebase.database();
 const catRef = database.ref('catV2');
 const authRef = database.ref('auth');
 const msgRef = database.ref('messages');
+const fortuneRef = database.ref('dailyFortune');
 
 // ==================== 授权码验证 ====================
 async function sha256(message) {
@@ -249,13 +250,35 @@ let fortuneDrawn = false;
 
 function initFortune() {
     const today = new Date().toISOString().slice(0, 10);
-    const saved = localStorage.getItem('fortune_date');
-    if (saved === today) {
-        const data = JSON.parse(localStorage.getItem('fortune_data') || '{}');
-        // 刷新页面后只恢复显示，不重复应用 bonus（bonus 仅在首次抽取时生效，这是预期行为）
-        showFortuneResult(data);
-        fortuneDrawn = true;
-    }
+    
+    // 先检查本地是否已抽过
+    const localDrawn = localStorage.getItem('fortune_date') === today;
+    
+    // 监听今日运势
+    fortuneRef.child(today).on('value', (snapshot) => {
+        const fortune = snapshot.val();
+        if (fortune) {
+            // 服务器已有今日运势
+            showFortuneResult(fortune);
+            fortuneDrawn = true;
+            
+            // 如果本地没抽过，应用 bonus
+            if (!localDrawn && fortune.bonus) {
+                if (fortune.bonus.hunger) catState.hunger = Math.min(MAX_STAT, catState.hunger + fortune.bonus.hunger);
+                if (fortune.bonus.mood) catState.mood = Math.min(MAX_STAT, catState.mood + fortune.bonus.mood);
+                if (fortune.bonus.energy) catState.energy = Math.min(MAX_STAT, catState.energy + fortune.bonus.energy);
+                saveCatState();
+                updateDisplay();
+                localStorage.setItem('fortune_date', today);
+                localStorage.setItem('fortune_data', JSON.stringify(fortune));
+            }
+        } else {
+            // 服务器还没有今日运势，显示未抽状态
+            fortuneDrawn = false;
+            DOM.fortuneText.textContent = '点击抽签';
+            DOM.fortuneCard.classList.remove('revealed');
+        }
+    });
 }
 
 function drawFortune() {
@@ -264,25 +287,45 @@ function drawFortune() {
 
     const fortune = FORTUNES[Math.floor(Math.random() * FORTUNES.length)];
     const today = new Date().toISOString().slice(0, 10);
-    localStorage.setItem('fortune_date', today);
-    localStorage.setItem('fortune_data', JSON.stringify(fortune));
+    
+    // 使用 transaction 保证并发安全：只在当日运势为空时写入
+    fortuneRef.child(today).transaction((current) => {
+        if (current === null) {
+            // 服务器还没有今日运势，写入
+            return fortune;
+        }
+        // 已有运势，返回当前值不变
+        return current;
+    }, (error, committed, snapshot) => {
+        if (error) {
+            console.error('Fortune transaction error:', error);
+            fortuneDrawn = false;
+            return;
+        }
+        
+        const finalFortune = snapshot.val();
+        
+        // 本地记录
+        localStorage.setItem('fortune_date', today);
+        localStorage.setItem('fortune_data', JSON.stringify(finalFortune));
 
-    // 应用加成
-    if (fortune.bonus.hunger) catState.hunger = Math.min(MAX_STAT, catState.hunger + fortune.bonus.hunger);
-    if (fortune.bonus.mood) catState.mood = Math.min(MAX_STAT, catState.mood + fortune.bonus.mood);
-    if (fortune.bonus.energy) catState.energy = Math.min(MAX_STAT, catState.energy + fortune.bonus.energy);
-    saveCatState();
-    updateDisplay();
+        // 应用加成
+        if (finalFortune.bonus.hunger) catState.hunger = Math.min(MAX_STAT, catState.hunger + finalFortune.bonus.hunger);
+        if (finalFortune.bonus.mood) catState.mood = Math.min(MAX_STAT, catState.mood + finalFortune.bonus.mood);
+        if (finalFortune.bonus.energy) catState.energy = Math.min(MAX_STAT, catState.energy + finalFortune.bonus.energy);
+        saveCatState();
+        updateDisplay();
 
-    // 动画翻转
-    DOM.fortuneCard.classList.add('flipping');
-    setTimeout(() => {
-        showFortuneResult(fortune);
-        DOM.fortuneCard.classList.remove('flipping');
-        DOM.fortuneCard.classList.add('revealed');
-    }, 400);
+        // 动画翻转
+        DOM.fortuneCard.classList.add('flipping');
+        setTimeout(() => {
+            showFortuneResult(finalFortune);
+            DOM.fortuneCard.classList.remove('flipping');
+            DOM.fortuneCard.classList.add('revealed');
+        }, 400);
 
-    if (navigator.vibrate) navigator.vibrate([20, 40, 20]);
+        if (navigator.vibrate) navigator.vibrate([20, 40, 20]);
+    });
 }
 
 function showFortuneResult(fortune) {
@@ -338,13 +381,26 @@ function catchFish(fish, e) {
     fish.classList.add('caught');
     activeFishCount--;
 
-    // 喂食效果（比按钮少一点）
-    catState.hunger = Math.min(MAX_STAT, catState.hunger + 8);
-    catState.mood = Math.min(MAX_STAT, catState.mood + 3);
-    catState.totalFeeds++;
-    catState.lastUpdate = Date.now();
-    saveCatState();
-    updateDisplay();
+    // 使用 transaction 保证并发安全
+    catRef.transaction((current) => {
+        if (!current) return null;
+        const newState = {
+            hunger: Math.min(MAX_STAT, current.hunger + 8),
+            mood: Math.min(MAX_STAT, current.mood + 3),
+            lastUpdate: Date.now(),
+            totalFeeds: (current.totalFeeds || 0) + 1
+        };
+        // 应用到本地状态
+        catState.hunger = newState.hunger;
+        catState.mood = newState.mood;
+        catState.lastUpdate = newState.lastUpdate;
+        catState.totalFeeds = newState.totalFeeds;
+        return newState;
+    }, (error) => {
+        if (error) {
+            console.error('Fish catch transaction error:', error);
+        }
+    });
 
     showBubble('抓到鱼了!');
     catBounce();
@@ -434,13 +490,31 @@ function triggerRandomEvent() {
 
     const evt = RANDOM_EVENTS[Math.floor(Math.random() * RANDOM_EVENTS.length)];
 
-    // 应用加成
-    if (evt.bonus.hunger) catState.hunger = Math.min(MAX_STAT, catState.hunger + evt.bonus.hunger);
-    if (evt.bonus.mood) catState.mood = Math.min(MAX_STAT, catState.mood + evt.bonus.mood);
-    if (evt.bonus.energy) catState.energy = Math.min(MAX_STAT, catState.energy + evt.bonus.energy);
-    catState.lastUpdate = Date.now();
-    saveCatState();
-    updateDisplay();
+    // 使用 transaction 保证并发安全
+    catRef.transaction((current) => {
+        if (!current) return null;
+        const newState = {
+            hunger: current.hunger,
+            mood: current.mood,
+            energy: current.energy,
+            lastUpdate: Date.now()
+        };
+        if (evt.bonus.hunger) newState.hunger = Math.min(MAX_STAT, current.hunger + evt.bonus.hunger);
+        if (evt.bonus.mood) newState.mood = Math.min(MAX_STAT, current.mood + evt.bonus.mood);
+        if (evt.bonus.energy) newState.energy = Math.min(MAX_STAT, current.energy + evt.bonus.energy);
+        // 应用到本地状态
+        catState.hunger = newState.hunger;
+        catState.mood = newState.mood;
+        catState.energy = newState.energy;
+        catState.lastUpdate = newState.lastUpdate;
+        return newState;
+    }, (error) => {
+        if (error) {
+            console.error('Random event transaction error:', error);
+            return;
+        }
+        updateDisplay();
+    });
 
     // 显示弹窗
     DOM.eventIcon.textContent = evt.icon;
@@ -741,16 +815,31 @@ function feedCat() {
     DOM.feedBtn.classList.add('cooldown');
     setTimeout(() => DOM.feedBtn.classList.remove('cooldown'), COOLDOWN);
 
-    catState.hunger = Math.min(MAX_STAT, catState.hunger + FEED_EFFECT.hunger);
-    catState.mood = Math.min(MAX_STAT, catState.mood + FEED_EFFECT.mood);
-    catState.lastUpdate = now;
-    catState.totalFeeds++;
+    // 使用 transaction 保证并发安全
+    catRef.transaction((current) => {
+        if (!current) return null;
+        const newState = {
+            hunger: Math.min(MAX_STAT, current.hunger + FEED_EFFECT.hunger),
+            mood: Math.min(MAX_STAT, current.mood + FEED_EFFECT.mood),
+            lastUpdate: now,
+            totalFeeds: (current.totalFeeds || 0) + 1
+        };
+        // 应用到本地状态
+        catState.hunger = newState.hunger;
+        catState.mood = newState.mood;
+        catState.lastUpdate = newState.lastUpdate;
+        catState.totalFeeds = newState.totalFeeds;
+        return newState;
+    }, (error) => {
+        if (error) {
+            console.error('Feed transaction error:', error);
+        }
+    });
 
     showBubble(FEED_RESPONSES[Math.floor(Math.random() * FEED_RESPONSES.length)]);
     catBounce();
     updateDisplay();
     updateSpeech();
-    saveCatState();
 }
 
 function petCat() {
@@ -763,16 +852,31 @@ function petCat() {
     DOM.petBtn.classList.add('cooldown');
     setTimeout(() => DOM.petBtn.classList.remove('cooldown'), COOLDOWN);
 
-    catState.mood = Math.min(MAX_STAT, catState.mood + PET_EFFECT.mood);
-    catState.energy = Math.min(MAX_STAT, catState.energy + PET_EFFECT.energy);
-    catState.lastUpdate = now;
-    catState.totalPets++;
+    // 使用 transaction 保证并发安全
+    catRef.transaction((current) => {
+        if (!current) return null;
+        const newState = {
+            mood: Math.min(MAX_STAT, current.mood + PET_EFFECT.mood),
+            energy: Math.min(MAX_STAT, current.energy + PET_EFFECT.energy),
+            lastUpdate: now,
+            totalPets: (current.totalPets || 0) + 1
+        };
+        // 应用到本地状态
+        catState.mood = newState.mood;
+        catState.energy = newState.energy;
+        catState.lastUpdate = newState.lastUpdate;
+        catState.totalPets = newState.totalPets;
+        return newState;
+    }, (error) => {
+        if (error) {
+            console.error('Pet transaction error:', error);
+        }
+    });
 
     showBubble(PET_RESPONSES[Math.floor(Math.random() * PET_RESPONSES.length)]);
     catBounce();
     updateDisplay();
     updateSpeech();
-    saveCatState();
 }
 
 function playCat() {
@@ -784,17 +888,33 @@ function playCat() {
     DOM.playBtn.classList.add('cooldown');
     setTimeout(() => DOM.playBtn.classList.remove('cooldown'), COOLDOWN);
 
-    catState.energy = Math.min(MAX_STAT, catState.energy + PLAY_EFFECT.energy);
-    catState.mood = Math.min(MAX_STAT, catState.mood + PLAY_EFFECT.mood);
-    catState.hunger = Math.max(MIN_STAT, catState.hunger + PLAY_EFFECT.hunger);
-    catState.lastUpdate = now;
-    catState.totalPlays = (catState.totalPlays || 0) + 1;
+    // 使用 transaction 保证并发安全
+    catRef.transaction((current) => {
+        if (!current) return null;
+        const newState = {
+            energy: Math.min(MAX_STAT, current.energy + PLAY_EFFECT.energy),
+            mood: Math.min(MAX_STAT, current.mood + PLAY_EFFECT.mood),
+            hunger: Math.max(MIN_STAT, current.hunger + PLAY_EFFECT.hunger),
+            lastUpdate: now,
+            totalPlays: (current.totalPlays || 0) + 1
+        };
+        // 应用到本地状态
+        catState.energy = newState.energy;
+        catState.mood = newState.mood;
+        catState.hunger = newState.hunger;
+        catState.lastUpdate = newState.lastUpdate;
+        catState.totalPlays = newState.totalPlays;
+        return newState;
+    }, (error) => {
+        if (error) {
+            console.error('Play transaction error:', error);
+        }
+    });
 
     showBubble(PLAY_RESPONSES[Math.floor(Math.random() * PLAY_RESPONSES.length)]);
     catBounce();
     updateDisplay();
     updateSpeech();
-    saveCatState();
 }
 
 // ==================== Firebase 同步 ====================
