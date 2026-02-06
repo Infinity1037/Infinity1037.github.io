@@ -16,18 +16,20 @@
 body {
     font-family: system-ui, -apple-system, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
     min-height: 100vh;
-    min-height: 100dvh; /* 动态视口高度，解决移动端地址栏问题 */
+    min-height: 100dvh;
     color: var(--text-color);
     display: flex;
     justify-content: center;
-    align-items: center;
+    align-items: flex-start;
     background: linear-gradient(-45deg, #667eea, #764ba2, #f093fb, #f5576c, #4facfe, #00f2fe);
     background-size: 400% 400%;
+    background-attachment: fixed;
     animation: gradientFlow 15s ease infinite;
-    overflow: hidden;
+    overflow-x: hidden;
+    overflow-y: auto;
     position: relative;
-    /* 防止下拉刷新 */
     overscroll-behavior: none;
+    -webkit-overflow-scrolling: touch;
 }
 
 /* 天气装饰层 */
@@ -135,6 +137,16 @@ body {
     pointer-events: none;
 }
 
+/* 隐藏滚动条但保留滚动功能 */
+body::-webkit-scrollbar {
+    display: none;
+}
+
+body {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
+
 .background-overlay::before {
     content: "";
     position: absolute;
@@ -154,6 +166,8 @@ body {
     padding: 1.5rem;
     width: 100%;
     max-width: 420px;
+    margin-top: auto;
+    margin-bottom: auto;
 }
 
 .greeting-box {
