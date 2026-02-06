@@ -242,7 +242,7 @@ const FORTUNES = [
     { level: '小吉', color: '#2ed573', msg: '平稳顺利的一天', bonus: { mood: 5 } },
     { level: '小吉', color: '#2ed573', msg: '适合陪猫咪玩耍', bonus: { energy: 8 } },
     { level: '吉', color: '#7bed9f', msg: '安安静静也很好', bonus: { mood: 3 } },
-    { level: '末吉', color: '#a4b0be', msg: '多摸摸猫咪转运吧~', bonus: { mood: 2 } },
+    { level: '上吉', color: '#ff6b6b', msg: '福气满满的一天！', bonus: { mood: 12, energy: 6 } },
 ];
 
 let fortuneDrawn = false;
@@ -839,7 +839,7 @@ function initFirebase() {
             mood = Math.max(MIN_STAT, Math.min(100, mood - hoursPassed * DECAY_PER_HOUR.mood));
             energy = Math.max(MIN_STAT, Math.min(100, energy - hoursPassed * DECAY_PER_HOUR.energy));
 
-            catState = {
+            const remoteState = {
                 hunger: hunger,
                 mood: mood,
                 energy: energy,
@@ -850,6 +850,8 @@ function initFirebase() {
                 streak: Number(data.streak) || 0,
                 lastVisitDate: data.lastVisitDate || ''
             };
+
+            catState = remoteState;
 
             // 保存到本地缓存
             saveToLocalStorage();
@@ -1002,13 +1004,6 @@ function initApp() {
     setInterval(() => updateWeather(new Date().getHours()), 3600000);
 
     initFirebase();
-
-    // 离线重连后自动同步本地状态
-    database.ref('.info/connected').on('value', (snap) => {
-        if (snap.val() === true && catState.lastUpdate) {
-            saveCatState();
-        }
-    });
 
     // 留言板
     initMsgBoard();
