@@ -12,7 +12,8 @@
     <link rel="preconnect" href="https://www.gstatic.com" crossorigin>
     <link rel="preconnect" href="https://shared-cat-default-rtdb.asia-southeast1.firebasedatabase.app" crossorigin>
     <link rel="dns-prefetch" href="https://www.gstatic.com">
-    <title>二五一二零五</title>
+    <title>Yian的猫</title>
+    <meta name="description" content="Yian的猫咪虚拟宠物，和朋友一起养猫~">
     <link rel="stylesheet" href="style.css">
 </head>
 
@@ -20,8 +21,28 @@
     <div class="background-overlay"></div>
     <div class="weather-layer" id="weather-layer"></div>
 
+    <!-- Auth Screen -->
+    <div class="auth-screen" id="auth-screen">
+        <div class="auth-content">
+            <div class="auth-cat">
+                <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+                    <circle cx="100" cy="110" r="60" fill="#FFFFFF" opacity="0.3" />
+                    <circle cx="100" cy="80" r="55" fill="#FFFFFF" opacity="0.3" />
+                    <path d="M60 55 L45 20 L85 45 Z" fill="#FFFFFF" opacity="0.3" />
+                    <path d="M140 55 L155 20 L115 45 Z" fill="#FFFFFF" opacity="0.3" />
+                </svg>
+            </div>
+            <div class="auth-title">喵~ 说出暗号</div>
+            <div class="auth-input-wrap">
+                <input type="password" id="auth-input" class="auth-input" placeholder="悄悄告诉我~" autocomplete="off" inputmode="text" maxlength="32">
+            </div>
+            <button class="auth-btn" id="auth-btn">进入猫窝</button>
+            <div class="auth-error" id="auth-error"></div>
+        </div>
+    </div>
+
     <!-- Loading Screen -->
-    <div class="loading-screen" id="loading-screen">
+    <div class="loading-screen" id="loading-screen" style="display:none;">
         <div class="loading-content">
             <div class="loading-cat">
                 <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
@@ -45,6 +66,9 @@
             <p class="subtitle">愿咪拥有美好的一天</p>
 
             <div class="cat-area">
+                <!-- 接鱼小游戏容器 -->
+                <div class="fish-pond" id="fish-pond"></div>
+
                 <!-- 猫咪对话 -->
                 <div class="cat-speech" id="cat-speech">今天心情不错~</div>
 
@@ -73,6 +97,10 @@
                                     stroke-linecap="round" />
                                 <path d="M114 82 Q120 87 126 82" fill="none" stroke="#333" stroke-width="3"
                                     stroke-linecap="round" />
+                            </g>
+                            <g id="eyes-sleep" style="display:none;">
+                                <line x1="74" y1="80" x2="86" y2="80" stroke="#333" stroke-width="3" stroke-linecap="round" />
+                                <line x1="114" y1="80" x2="126" y2="80" stroke="#333" stroke-width="3" stroke-linecap="round" />
                             </g>
                             <path d="M95 95 Q100 100 105 95" fill="none" stroke="#333" stroke-width="4"
                                 stroke-linecap="round" />
@@ -122,11 +150,28 @@
                         <span class="btn-icon">🖐️</span>
                         <span class="btn-text">抚摸</span>
                     </button>
+                    <button class="action-btn play-btn" id="play-btn">
+                        <span class="btn-icon">🎾</span>
+                        <span class="btn-text">玩耍</span>
+                    </button>
                 </div>
 
-                <!-- 统计 -->
+                <!-- 统计 + 徽章 -->
                 <div class="stats-info">
-                    共被喂食 <span id="total-feeds">0</span> 次 · 互动 <span id="total-pets">0</span> 次
+                    <div class="stats-row">
+                        <span>Lv.<span id="cat-level">1</span></span>
+                        <span class="stats-divider">·</span>
+                        <span>喂食 <span id="total-feeds">0</span></span>
+                        <span class="stats-divider">·</span>
+                        <span>互动 <span id="total-pets">0</span></span>
+                        <span class="stats-divider">·</span>
+                        <span>玩耍 <span id="total-plays">0</span></span>
+                    </div>
+                    <div class="streak-row" id="streak-row">
+                        <span class="streak-flame">🔥</span>
+                        <span>连续签到 <span id="streak-count">0</span> 天</span>
+                    </div>
+                    <div class="badges-row" id="badges-row"></div>
                 </div>
             </div>
 
@@ -135,12 +180,39 @@
                 <div id="date">YYYY年MM月DD日 星期X</div>
             </div>
 
-            <div class="quote-container">
-                <div id="quote">正在加载...</div>
-                <div id="quote-author"></div>
+            <div class="fortune-container" id="fortune-container">
+                <div class="fortune-card" id="fortune-card">
+                    <span class="fortune-icon">✨</span>
+                    <span class="fortune-text" id="fortune-text">点击抽取今日运势</span>
+                </div>
+            </div>
+
+            <div class="msg-board" id="msg-board">
+                <div class="msg-latest" id="msg-latest">
+                    <span class="msg-icon">💬</span>
+                    <span class="msg-content" id="msg-content">还没有留言，点击说点什么~</span>
+                </div>
             </div>
         </div>
     </main>
+
+    <!-- 留言输入浮层 -->
+    <div class="msg-overlay" id="msg-overlay">
+        <div class="msg-modal">
+            <div class="msg-modal-title">给大家留句话 😺</div>
+            <input type="text" id="msg-input" class="msg-input" placeholder="想说什么~" maxlength="30" autocomplete="off">
+            <div class="msg-modal-actions">
+                <button class="msg-cancel-btn" id="msg-cancel">算了</button>
+                <button class="msg-send-btn" id="msg-send">发送</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 随机事件弹窗 -->
+    <div class="event-popup" id="event-popup">
+        <span class="event-icon" id="event-icon">🦋</span>
+        <span class="event-text" id="event-text"></span>
+    </div>
 
     <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js" defer></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-database-compat.js" defer></script>
