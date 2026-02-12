@@ -373,6 +373,11 @@ body::-webkit-scrollbar {
     background: rgba(255,255,255,0.2);
 }
 
+.quick-card.love-card {
+    background: linear-gradient(135deg, rgba(255,130,180,0.18), rgba(255,200,230,0.12));
+    border-color: rgba(255,150,200,0.25);
+}
+
 .qc-icon {
     font-size: 16px;
     flex-shrink: 0;
@@ -514,7 +519,7 @@ body::-webkit-scrollbar {
     background: transparent;
     border: none;
     border-radius: 14px;
-    padding: 8px 6px;
+    padding: 6px 6px;
     cursor: pointer;
     -webkit-tap-highlight-color: transparent;
     transition: all 0.2s;
@@ -527,8 +532,14 @@ body::-webkit-scrollbar {
 }
 
 .nav-item.active {
-    background: rgba(255,255,255,0.25);
-    box-shadow: 0 2px 8px rgba(255,255,255,0.15);
+    background: rgba(255,255,255,0.3);
+    box-shadow: 0 2px 10px rgba(255,255,255,0.2);
+    transform: scale(1.08);
+}
+
+.nav-item.active .nav-label {
+    color: #fff;
+    font-weight: 700;
 }
 
 .nav-icon {
@@ -554,6 +565,8 @@ body::-webkit-scrollbar {
     opacity: 0;
     pointer-events: none;
     transition: opacity 0.3s;
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
 }
 
 .panel-overlay.show {
@@ -634,6 +647,21 @@ body::-webkit-scrollbar {
     -webkit-overflow-scrolling: touch;
     overscroll-behavior: contain;
     padding-bottom: 8px;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(0,0,0,0.08) transparent;
+}
+
+.panel-body::-webkit-scrollbar {
+    width: 3px;
+}
+
+.panel-body::-webkit-scrollbar-thumb {
+    background: rgba(0,0,0,0.1);
+    border-radius: 3px;
+}
+
+.panel-body::-webkit-scrollbar-track {
+    background: transparent;
 }
 
 .panel-section {
@@ -654,12 +682,15 @@ body::-webkit-scrollbar {
     flex: 1;
     border: 1px solid rgba(0,0,0,0.1);
     border-radius: 20px;
-    padding: 8px 14px;
-    font-size: 13px;
+    padding: 10px 16px;
+    font-size: 14px;
     background: rgba(0,0,0,0.03);
     outline: none;
     color: #333;
     transition: border-color 0.2s;
+    min-height: 44px;
+    -webkit-appearance: none;
+    appearance: none;
 }
 
 .panel-input:focus {
@@ -668,7 +699,7 @@ body::-webkit-scrollbar {
 }
 
 .panel-send-btn {
-    padding: 8px 16px;
+    padding: 10px 18px;
     border: none;
     border-radius: 20px;
     background: linear-gradient(135deg, #c084fc, #f9a8d4);
@@ -677,8 +708,13 @@ body::-webkit-scrollbar {
     font-weight: 600;
     cursor: pointer;
     flex-shrink: 0;
-    transition: transform 0.15s;
+    transition: all 0.15s;
     -webkit-tap-highlight-color: transparent;
+    min-height: 44px;
+    min-width: 60px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .panel-send-btn:active {
@@ -690,6 +726,8 @@ body::-webkit-scrollbar {
     display: flex;
     flex-direction: column;
     gap: 8px;
+    flex: 1;
+    min-height: 0;
 }
 
 .msg-item {
@@ -717,6 +755,10 @@ body::-webkit-scrollbar {
     color: #bbb;
     font-size: 13px;
     padding: 30px 0;
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 @keyframes msgFadeIn {
@@ -727,10 +769,21 @@ body::-webkit-scrollbar {
 /* ===== 悄悄话提示 ===== */
 .whisper-hint {
     text-align: center;
-    color: #aaa;
-    font-size: 12px;
-    padding: 20px 0;
+    color: #c08090;
+    font-size: 13px;
+    padding: 30px 16px;
     font-style: italic;
+    background: linear-gradient(135deg, rgba(255,180,220,0.08), rgba(200,160,255,0.06));
+    border-radius: 14px;
+    border: 1px dashed rgba(255,140,200,0.2);
+}
+
+/* 悄悄话面板内容居中 */
+#whisper-panel .panel-body {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: stretch;
 }
 
 .greeting-box::before {
@@ -944,12 +997,15 @@ h1 {
     white-space: nowrap;
     z-index: 10;
     border: 1px solid rgba(255, 180, 210, 0.4);
+    -webkit-tap-highlight-color: transparent;
 }
 
 .meow-bubble.show {
     opacity: 1;
     transform: scale(1) translateY(0);
     animation: bubblePop 0.4s ease;
+    pointer-events: auto;
+    cursor: pointer;
 }
 
 @keyframes bubblePop {
@@ -1618,6 +1674,22 @@ h1 {
     position: relative;
 }
 
+/* 恋爱面板内容居中 */
+#love-panel .panel-body {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: stretch;
+}
+
+/* 运势面板内容居中 */
+#fortune-panel .panel-body {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+}
+
 .fortune-card {
     display: flex;
     align-items: center;
@@ -1732,6 +1804,20 @@ h1 {
     padding-top: 0;
     width: 100%;
     position: relative;
+}
+
+/* 猫咪面板内容居中 */
+#cat-panel .panel-body {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+/* 任务面板内容居中 */
+#quest-panel .panel-body {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
 }
 
 .quest-container::before {

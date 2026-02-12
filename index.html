@@ -202,11 +202,11 @@
                             <div class="qc-value" id="quest-mini">查看</div>
                         </div>
                     </div>
-                    <div class="quick-card" data-panel="chat-panel">
-                        <div class="qc-icon">💬</div>
+                    <div class="quick-card" data-panel="cat-panel">
+                        <div class="qc-icon">�</div>
                         <div class="qc-content">
-                            <div class="qc-label">留言板</div>
-                            <div class="qc-value" id="msg-mini">去看看</div>
+                            <div class="qc-label">猫咪档案</div>
+                            <div class="qc-value">Lv.<span id="cat-level-mini">1</span></div>
                         </div>
                     </div>
                 </div>
@@ -254,6 +254,10 @@
                 <span class="nav-icon">💌</span>
                 <span class="nav-label">悄悄话</span>
             </button>
+            <button class="nav-item" data-panel="cat-panel">
+                <span class="nav-icon">🐱</span>
+                <span class="nav-label">猫咪</span>
+            </button>
         </nav>
     </main>
 
@@ -270,25 +274,6 @@
                     <div class="love-days"><span class="love-heart">💕</span> 在一起第 <span id="love-days-panel">0</span> 天</div>
                     <div class="love-quote" id="love-quote-panel"></div>
                     <div class="holiday-countdown" id="holiday-countdown-panel"></div>
-                </div>
-                <div class="panel-section">
-                    <div class="streak-row" id="streak-row">
-                        <span class="streak-flame">🔥</span>
-                        <span>连续签到 <span id="streak-count">0</span> 天</span>
-                    </div>
-                </div>
-                <div class="panel-section">
-                    <div class="stats-row">
-                        <span>喂食 <span id="total-feeds">0</span></span>
-                        <span class="stats-divider">·</span>
-                        <span>互动 <span id="total-pets">0</span></span>
-                        <span class="stats-divider">·</span>
-                        <span>玩耍 <span id="total-plays">0</span></span>
-                    </div>
-                    <div class="badges-row" id="badges-row"></div>
-                </div>
-                <div class="panel-section">
-                    <div class="cat-diary" id="cat-diary">📖 猫咪还在想今天写什么...</div>
                 </div>
             </div>
         </div>
@@ -330,7 +315,7 @@
         <div class="panel-sheet">
             <button class="panel-close">✕</button>
             <div class="panel-handle"></div>
-            <div class="panel-title">💬 留言板</div>
+            <div class="panel-title">� 留言板</div>
             <div class="panel-body">
                 <div class="msg-list" id="msg-list">
                     <div class="msg-empty">还没有留言~</div>
@@ -339,6 +324,36 @@
             <div class="panel-input-bar">
                 <input type="text" id="msg-input" class="panel-input" placeholder="说点什么~" maxlength="30" autocomplete="off">
                 <button class="panel-send-btn" id="msg-send">发送</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 猫咪面板 -->
+    <div class="panel-overlay" id="cat-panel">
+        <div class="panel-sheet">
+            <button class="panel-close">✕</button>
+            <div class="panel-handle"></div>
+            <div class="panel-title">� 猫咪</div>
+            <div class="panel-body">
+                <div class="panel-section" style="border-top:none;">
+                    <div class="streak-row" id="streak-row">
+                        <span class="streak-flame">🔥</span>
+                        <span>连续签到 <span id="streak-count">0</span> 天</span>
+                    </div>
+                </div>
+                <div class="panel-section">
+                    <div class="stats-row">
+                        <span>喂食 <span id="total-feeds">0</span></span>
+                        <span class="stats-divider">·</span>
+                        <span>互动 <span id="total-pets">0</span></span>
+                        <span class="stats-divider">·</span>
+                        <span>玩耍 <span id="total-plays">0</span></span>
+                    </div>
+                    <div class="badges-row" id="badges-row"></div>
+                </div>
+                <div class="panel-section">
+                    <div class="cat-diary" id="cat-diary">📖 猫咪还在想今天写什么...</div>
+                </div>
             </div>
         </div>
     </div>

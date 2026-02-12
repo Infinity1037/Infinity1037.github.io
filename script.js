@@ -100,32 +100,32 @@ const WARNING_THRESHOLD = 30; // 低于30%显示警告
 
 // 多种食物
 const FOODS = [
-    { id: 'fish', icon: '🐟', name: '小鱼干', effect: { hunger: 20, mood: 8 }, levelReq: 1, daily: Infinity, responses: ['好吃~', '真香！', '还要还要', '满足~'] },
-    { id: 'milk', icon: '🥛', name: '牛奶', effect: { hunger: 10, energy: 15 }, levelReq: 1, daily: Infinity, responses: ['咕嘟咕嘟~', '好喝！', '奶味十足', '暖暖的~'] },
-    { id: 'cake', icon: '🍰', name: '蛋糕', effect: { hunger: 5, mood: 20 }, levelReq: 3, daily: 3, responses: ['甜甜的！', '好幸福~', '最爱蛋糕', '还想吃！'] },
-    { id: 'chicken', icon: '🍗', name: '鸡腿', effect: { hunger: 30, mood: 5, energy: 5 }, levelReq: 5, daily: Infinity, responses: ['大餐！', '好满足', '吃饱啦', '超级香！'] },
-    { id: 'premium', icon: '🍣', name: '寿司', effect: { hunger: 15, mood: 15, energy: 10 }, levelReq: 7, daily: 2, responses: ['高级货！', '太奢侈了', '幸福满满', '人间美味！'] },
+    { id: 'fish', icon: '🐟', name: '小鱼干', effect: { hunger: 20, mood: 8 }, levelReq: 1, daily: Infinity, responses: ['好吃~', '真香！', '还要还要', '满足~', '鱼干永远吃不腻', '嘎嘣脆！', '经典美味', '鱼的味道真棒'] },
+    { id: 'milk', icon: '🥛', name: '牛奶', effect: { hunger: 10, energy: 15 }, levelReq: 1, daily: Infinity, responses: ['咕嘟咕嘟~', '好喝！', '奶味十足', '暖暖的~', '喝完精神百倍', '牛奶真香醇', '一口接一口', '好像还想再喝一杯'] },
+    { id: 'cake', icon: '🍰', name: '蛋糕', effect: { hunger: 5, mood: 20 }, levelReq: 3, daily: 3, responses: ['甜甜的！', '好幸福~', '最爱蛋糕', '还想吃！', '草莓味的诶', '奶油好好吃', '甜到心里了', '今天是甜甜的猫'] },
+    { id: 'chicken', icon: '🍗', name: '鸡腿', effect: { hunger: 30, mood: 5, energy: 5 }, levelReq: 5, daily: Infinity, responses: ['大餐！', '好满足', '吃饱啦', '超级香！', '肉肉真好吃', '啃得真香', '鸡腿YYDS', '撕咬中...别打扰'] },
+    { id: 'premium', icon: '🍣', name: '寿司', effect: { hunger: 15, mood: 15, energy: 10 }, levelReq: 7, daily: 2, responses: ['高级货！', '太奢侈了', '幸福满满', '人间美味！', '三文鱼入口即化', '这就是高端猫生', '要哭了太好吃了', '感觉自己是贵族猫'] },
 ];
 let foodUsedToday = {}; // { foodId: count }
 
 // 猫咪对话
 const SPEECHES = {
-    hungry: ['肚子饿了...', '想吃小鱼干~', '喂喂我嘛', '好饿呀~'],
-    sad: ['陪我玩~', '好无聊啊', '摸摸我', '想你了~'],
-    tired: ['好困...', '想睡觉', 'zzZ', '眼皮好重'],
-    happy: ['好开心！', '喵~♡', '最喜欢你们了', '幸福~'],
-    normal: ['你好呀~', '喵~', '今天不错', '嘿嘿'],
-    morning: ['早安~', '新的一天！', '伸个懒腰~', '阳光真好'],
-    afternoon: ['午后犯困~', '想晒太阳', '下午茶时间', '打个哈欠~'],
-    evening: ['晚上好~', '月亮出来了', '今天辛苦了', '陪我看星星'],
-    night: ['该睡觉了...', '晚安~', 'zzZ...', '做个好梦'],
-    sleep: ['zzZ...', '呼噜噜...', '...', '（在做梦）']
+    hungry: ['肚子饿了...', '想吃小鱼干~', '喂喂我嘛', '好饿呀~', '咕噜咕噜...肚子在叫', '闻到好香的味道了', '看看有什么好吃的', '饿得前胸贴后背了', '食物食物！', '可以加餐吗~', '嘴巴好寂寞'],
+    sad: ['陪我玩~', '好无聊啊', '摸摸我', '想你了~', '怎么不理我...', '一个人好孤单', '你在忙什么呀', '我在这里等你哦', '来陪我嘛~', '有点想撒娇', '你是不是忘了我'],
+    tired: ['好困...', '想睡觉', 'zzZ', '眼皮好重', '打了个大哈欠', '困到不行了', '需要充电...', '感觉要电量耗尽了', '好想躺平', '困困困...', '脑袋好沉~'],
+    happy: ['好开心！', '喵~♡', '最喜欢你们了', '幸福~', '嘻嘻今天好快乐', '开心到转圈圈', '尾巴摇起来了！', '心情超好！', '笑得合不拢嘴', '今天是满分的一天', '被幸福包围了~'],
+    normal: ['你好呀~', '喵~', '今天不错', '嘿嘿', '无所事事中~', '看看外面有什么', '在想今天吃什么', '日子过得真快呀', '发呆中...', '踩踩小爪子', '尾巴甩一甩~'],
+    morning: ['早安~', '新的一天！', '伸个懒腰~', '阳光真好', '窗外的鸟叫得真好听', '今天也要元气满满', '起床第一件事是想你', '早起的猫咪有鱼吃', '伸展一下筋骨~', '早饭在哪里~'],
+    afternoon: ['午后犯困~', '想晒太阳', '下午茶时间', '打个哈欠~', '找个暖和的地方趴着', '午睡醒了~有点迷糊', '下午适合发呆', '阳光晒在毛上暖暖的', '想喝杯奶茶', '好想找个窗台躺着~'],
+    evening: ['晚上好~', '月亮出来了', '今天辛苦了', '陪我看星星', '夜风好凉快', '今天过得开心吗', '晚饭后散个步', '傍晚的天空好美', '星星开始眨眼了', '陪你度过这个夜晚~'],
+    night: ['该睡觉了...', '晚安~', 'zzZ...', '做个好梦', '夜深了要早点休息', '明天也要加油哦', '抱紧被子入睡~', '月亮已经高高挂了', '别熬夜了~对身体不好', '今晚做个好梦吧'],
+    sleep: ['zzZ...', '呼噜噜...', '...', '（在做梦）', '喵...唔...', '翻了个身...', '蜷成一团...', '耳朵抖了一下...']
 };
 
-const FEED_RESPONSES = ['好吃~', '真香！', '还要还要', '满足~', '谢谢~', '太棒了！'];
-const PET_RESPONSES = ['舒服~', '喵~', '再摸摸', '开心！', '嘿嘿', '好舒服'];
-const PLAY_RESPONSES = ['好好玩！', '再来再来！', '接住了！', '太开心了~', '嗷呜~', '冲呀！'];
-const LONG_PRESS_RESPONSES = ['超喜欢你！', '不要走~', '你是最好的！', '永远在一起♡', '幸福满满~'];
+const FEED_RESPONSES = ['好吃~', '真香！', '还要还要', '满足~', '谢谢~', '太棒了！', '嗝~吃饱了', '好幸福呀', '每一口都是爱', '简直是猫间美味', '吃到停不下来', '你对我真好~'];
+const PET_RESPONSES = ['舒服~', '喵~', '再摸摸', '开心！', '嘿嘿', '好舒服', '继续继续！', '不许停！', '呼噜呼噜~', '这里...对就是这里', '要融化了~', '手感不错吧嘿嘿', '摸到我打呼了', '你的手好暖'];
+const PLAY_RESPONSES = ['好好玩！', '再来再来！', '接住了！', '太开心了~', '嗷呜~', '冲呀！', '这次我一定接住', '看我的厉害！', '哈哈追到了', '累并快乐着', '你追不到我~', '我是运动健将！', '还能再玩一会儿吗'];
+const LONG_PRESS_RESPONSES = ['超喜欢你！', '不要走~', '你是最好的！', '永远在一起♡', '幸福满满~', '你的手好温暖', '这一刻好幸福', '想一直这样待着', '时间停下来吧~', '谢谢你一直陪着我', '你身上好香~', '最喜欢被抱着了'];
 
 // ==================== 状态 ====================
 let catState = {
@@ -250,12 +250,22 @@ function updateTime() {
 const FORTUNES = [
     { level: '大吉', color: '#ff6b6b', msg: '今天超级幸运！猫咪会特别开心', bonus: { mood: 15, energy: 10 } },
     { level: '大吉', color: '#ff6b6b', msg: '万事如意，好运连连', bonus: { hunger: 15, mood: 10 } },
+    { level: '大吉', color: '#ff6b6b', msg: '锦鲤附体！今天做什么都顺', bonus: { mood: 12, energy: 12 } },
+    { level: '上吉', color: '#ff6b6b', msg: '福气满满的一天！', bonus: { mood: 12, energy: 6 } },
+    { level: '上吉', color: '#ff6b6b', msg: '好事成双，甜蜜加倍~', bonus: { hunger: 10, mood: 12 } },
     { level: '中吉', color: '#ffa502', msg: '今天运气不错哦~', bonus: { mood: 10, energy: 5 } },
     { level: '中吉', color: '#ffa502', msg: '会有小惊喜发生', bonus: { hunger: 10, mood: 5 } },
+    { level: '中吉', color: '#ffa502', msg: '适合和喜欢的人待在一起', bonus: { mood: 10, energy: 5 } },
+    { level: '中吉', color: '#ffa502', msg: '今天的笑容会特别多~', bonus: { mood: 12 } },
     { level: '小吉', color: '#2ed573', msg: '平稳顺利的一天', bonus: { mood: 5 } },
     { level: '小吉', color: '#2ed573', msg: '适合陪猫咪玩耍', bonus: { energy: 8 } },
+    { level: '小吉', color: '#2ed573', msg: '小确幸会悄悄找上门', bonus: { mood: 6, hunger: 3 } },
+    { level: '小吉', color: '#2ed573', msg: '今天很适合吃顿好的', bonus: { hunger: 8 } },
     { level: '吉', color: '#7bed9f', msg: '安安静静也很好', bonus: { mood: 3 } },
-    { level: '上吉', color: '#ff6b6b', msg: '福气满满的一天！', bonus: { mood: 12, energy: 6 } },
+    { level: '吉', color: '#7bed9f', msg: '平凡的一天也有小美好', bonus: { mood: 4, energy: 2 } },
+    { level: '吉', color: '#7bed9f', msg: '今天适合发呆放空~', bonus: { energy: 5 } },
+    { level: '吉', color: '#7bed9f', msg: '猫咪今天会格外乖巧', bonus: { mood: 5 } },
+    { level: '吉', color: '#7bed9f', msg: '简简单单就是幸福', bonus: { mood: 3, hunger: 3 } },
 ];
 
 let fortuneDrawn = false;
@@ -883,9 +893,14 @@ function initPresence() {
         const data = snap.val();
         if (!data) return;
         let otherOnline = false;
+        const now = Date.now();
         Object.keys(data).forEach(key => {
             if (key !== sessionId && data[key].online) {
                 otherOnline = true;
+            }
+            // 清理离线超过24小时的旧记录
+            if (!data[key].online && data[key].lastSeen && (now - data[key].lastSeen > 86400000)) {
+                presenceRef.child(key).remove();
             }
         });
         updateOnlineIndicator(otherOnline);
@@ -998,6 +1013,12 @@ const DREAM_TALKS = [
     '💤 喵呜...好暖和...', '💤 嗯嗯...罐头...再来一个...', '💤 zzz...星星好亮...',
     '💤 呼噜...不要摸...还想睡...', '💤 梦到两个人一起撸我...',
     '💤 喵...好大的沙发...', '💤 嗯...尾巴...别踩...',
+    '💤 呼...梦到在云上走路...', '💤 嗯...好多好多小鱼...游过来了...',
+    '💤 喵...月亮好大...能坐上去吗...', '💤 呼噜...被子好香...',
+    '💤 嗯嗯...不要关灯...还没玩够...', '💤 zzz...变成大老虎了...',
+    '💤 喵...梦到下雪了...用爪子接...', '💤 呼...有人在揉我肚子...',
+    '💤 嗯...好大一棵树...爬不上去...', '💤 喵呜...梦到你们结婚了...我是花童...',
+    '💤 zzZ...这个梦好甜...不想醒...', '💤 呼噜...翻个身...继续睡...',
 ];
 
 let dreamInterval = null;
@@ -1108,7 +1129,10 @@ function updateDisplay() {
     DOM.totalPlays.textContent = catState.totalPlays || 0;
 
     // 更新等级
-    DOM.catLevel.textContent = getCatLevel();
+    const level = getCatLevel();
+    DOM.catLevel.textContent = level;
+    const levelMini = document.getElementById('cat-level-mini');
+    if (levelMini) levelMini.textContent = level;
 
     // 更新连续签到
     DOM.streakCount.textContent = catState.streak || 0;
@@ -1206,10 +1230,19 @@ function updateSpeech() {
     }, 300);
 }
 
+let bubbleTimer = null;
 function showBubble(text) {
+    if (bubbleTimer) clearTimeout(bubbleTimer);
     DOM.meowBubble.textContent = text;
     DOM.meowBubble.classList.add('show');
-    setTimeout(() => DOM.meowBubble.classList.remove('show'), 1500);
+    // 时长随文字长度自适应：最短1.5s，每多5个字+500ms，最长4s
+    const duration = Math.min(4000, 1500 + Math.max(0, text.length - 6) * 100);
+    bubbleTimer = setTimeout(() => DOM.meowBubble.classList.remove('show'), duration);
+}
+
+function dismissBubble() {
+    if (bubbleTimer) clearTimeout(bubbleTimer);
+    DOM.meowBubble.classList.remove('show');
 }
 
 function catBounce() {
@@ -1597,17 +1630,17 @@ function initCuteFloats() {
 
 // ==================== 猫咪小日记 ====================
 const DIARY_TEMPLATES = {
-    feed_many: ['今天吃了好多好吃的，肚子圆滚滚~', '被喂了好多次，幸福肥预警！', '今天的伙食太棒了！'],
-    feed_few: ['今天只吃了一点点...', '好像有人忘记喂我了...'],
-    pet_many: ['被摸了好多下，毛都顺了~', '今天被撸得好舒服，打了好多呼噜~'],
-    pet_few: ['今天只被摸了一下就走了...', '想被多摸摸...'],
-    play_many: ['今天玩疯了！累并快乐着~', '和人类玩了好久，开心！'],
-    happy: ['今天心情超好！想翻肚皮~', '好开心的一天，喵~'],
-    sad: ['今天有点不开心...需要抱抱', '心情不太好，想被哄哄~'],
-    sleepy: ['好困好困...要去梦里抓蝴蝶了', '今天很累，早点睡吧~'],
-    full: ['吃饱饱了，什么都不想做~', '肚子好饱，躺平了~'],
-    duo: ['今天两个人都来看我了！双倍快乐！', '两个铲屎官都在，被宠爱的感觉~'],
-    normal: ['平平淡淡的一天，也很好~', '今天和往常一样，安安静静的~', '嗯...普普通通的一天~'],
+    feed_many: ['今天吃了好多好吃的，肚子圆滚滚~', '被喂了好多次，幸福肥预警！', '今天的伙食太棒了！', '嗝~再也塞不下了', '今天是美食节吧！好幸福', '铲屎官今天格外大方呢~'],
+    feed_few: ['今天只吃了一点点...', '好像有人忘记喂我了...', '肚子还有点空空的', '伙食不太够啊，暗示一下~', '偷偷看了眼空碗...叹气'],
+    pet_many: ['被摸了好多下，毛都顺了~', '今天被撸得好舒服，打了好多呼噜~', '从头摸到尾，绝了', '今天撸猫时长达标了！', '呼噜呼噜停不下来~'],
+    pet_few: ['今天只被摸了一下就走了...', '想被多摸摸...', '摸我的时间好短哦', '伸了个懒腰暗示了一下...没用'],
+    play_many: ['今天玩疯了！累并快乐着~', '和人类玩了好久，开心！', '运动量超标！但好快乐', '追了好多东西，大满足', '今天是运动会！冠军是我'],
+    happy: ['今天心情超好！想翻肚皮~', '好开心的一天，喵~', '笑着笑着就打了个呼噜', '尾巴翘到天上去了！', '想给全世界比个心'],
+    sad: ['今天有点不开心...需要抱抱', '心情不太好，想被哄哄~', '趴在窗边叹了口气...', '今天有点丧丧的', '窝在角落里不想动...'],
+    sleepy: ['好困好困...要去梦里抓蝴蝶了', '今天很累，早点睡吧~', '眼皮打架中...它赢了', '找了个暖和的角落准备入睡~', '今天的运动量让我想直接昏睡'],
+    full: ['吃饱饱了，什么都不想做~', '肚子好饱，躺平了~', '饱到不想翻身...', '吃太多了需要消化一下', '幸福的饱嗝~'],
+    duo: ['今天两个人都来看我了！双倍快乐！', '两个铲屎官都在，被宠爱的感觉~', '被两个人轮流撸，巅峰猫生', '今天是被双倍爱着的一天！'],
+    normal: ['平平淡淡的一天，也很好~', '今天和往常一样，安安静静的~', '嗯...普普通通的一天~', '看了看窗外，天气不错~', '今天发了一天呆，很充实（？）', '在沙发上翻了几个身，也算运动了'],
 };
 
 function generateDiary() {
@@ -1653,6 +1686,7 @@ const LOVE_START = new Date('2025-12-05T00:00:00');
 const LOVE_MILESTONES = [7, 30, 50, 100, 200, 365, 500, 520, 730, 999, 1000, 1314];
 
 const LOVE_QUOTES = [
+    // 甜蜜日常
     '今天也想你了~', '你是我最甜的心事', '有你的日子都是晴天',
     '想和你一起慢慢变老', '世界那么大，我只想和你在一起',
     '遇见你，是所有故事的开始', '每天醒来第一个想到的人是你',
@@ -1663,6 +1697,7 @@ const LOVE_QUOTES = [
     '我想做你床边的闹钟，负责叫你起床',
     '你是限量版的快乐', '想把所有的温柔都给你',
     '心里有你 生活就有了光', '今天也要开开心心鸭',
+    // 文艺诗意
     '你是我的例外也是我的偏爱', '往后余生 风雪是你 平淡是你',
     '全世界都在催我长大 只有你宠我像个小孩',
     '我这一生 除了故乡 就是你', '每天最期待的事就是和你说晚安',
@@ -1679,6 +1714,27 @@ const LOVE_QUOTES = [
     '落日归山海 山海藏深意', '晚风踏月来 替我与你说一句晚安',
     '想把整个秋天的温柔都揉进你的怀里',
     '今天的月亮好圆 好想咬一口 然后问你甜不甜',
+    // 可爱俏皮
+    '你今天有没有偷偷想我呀', '我的小脑袋里全是你',
+    '你怎么还没夸我今天好看', '我超甜的 不信你尝尝',
+    '想钻进你的口袋里 被你带着走', '你就是我的人间理想',
+    '每次想你 我就多一颗星星', '我把对你的喜欢藏在每一条消息里',
+    '你不用太好 我喜欢就好', '我对你的喜欢 像小尾巴一样甩不掉',
+    '你是我的宝藏 藏好了不给别人看', '想被你宠成三岁小孩',
+    '我偷偷地在喜欢你 别告诉你', '你一笑 我的世界就亮了',
+    // 温暖治愈
+    '不管今天多累 回家有你就好', '你是我所有的不安中唯一的答案',
+    '有你在的地方 就是我想回去的地方', '谢谢你出现在我的生命里',
+    '你让我相信 这个世界上真的有美好', '最好的时光是和你一起虚度的',
+    '我不需要全世界 我只需要你', '你是我平淡生活里的那颗糖',
+    '每天都想给你一个拥抱', '你就像冬天的暖气 让我离不开',
+    '有些人光是遇见就已经很幸运了', '你是我疲惫生活中的温柔梦想',
+    // 小句子
+    '想你 此刻 非常', '今天份的喜欢已送达',
+    '你是我写过最好的情书', '晚安 是我对你说的最后一句情话',
+    '希望你的枕头又软又香 梦里有我', '我在想你和在想你之间反复横跳',
+    '今天的风好温柔 像你一样', '和你在一起的每一秒都在发光',
+    '你是我见过的最好的人 没有之一',
 ];
 
 // 打字机效果
@@ -2136,10 +2192,14 @@ function initHolidayCountdown() {
     if (todayH) {
         el.innerHTML = '<span class="hc-icon">' + todayH.icon + '</span> 今天是<b>' + todayH.name + '</b>！';
         el.classList.add('today');
+        el.style.display = '';
     } else {
         const next = getNextHoliday();
-        if (next) {
+        if (next && next.daysLeft <= 7) {
             el.innerHTML = '<span class="hc-icon">' + next.icon + '</span> 距<b>' + next.name + '</b>还有 <b>' + next.daysLeft + '</b> 天';
+            el.style.display = '';
+        } else {
+            el.style.display = 'none';
         }
     }
 }
@@ -2216,6 +2276,13 @@ function initApp() {
 
     // 猫咪小日记
     initDiary();
+
+    // 点击气泡可提前消除
+    DOM.meowBubble.addEventListener('pointerdown', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        dismissBubble();
+    });
 
     // 猫咪装扮
     document.getElementById('accessory-btn').addEventListener('pointerdown', (e) => {
@@ -2300,11 +2367,17 @@ function initApp() {
     const COMBO_REACTIONS = [
         { min: 1, msg: '喵~', emoji: '⭐' },
         { min: 3, msg: '喵喵喵！', emoji: '✨' },
-        { min: 6, msg: '别戳啦！！', emoji: '💢' },
+        { min: 5, msg: '又来戳我！', emoji: '💫' },
+        { min: 8, msg: '别戳啦！！', emoji: '💢' },
         { min: 10, msg: '好痒好痒！！', emoji: '😹' },
+        { min: 13, msg: '你是不是闲的！', emoji: '😾' },
         { min: 15, msg: '要被戳穿啦！', emoji: '🌟' },
+        { min: 18, msg: '救命啊有人疯狂戳我', emoji: '🆘' },
         { min: 20, msg: '投降投降！！', emoji: '🏳️' },
+        { min: 25, msg: '你的手指不累吗！', emoji: '🤯' },
         { min: 30, msg: '戳猫大师！！', emoji: '👑' },
+        { min: 40, msg: '你已经是传说了！', emoji: '🏆' },
+        { min: 50, msg: '至尊戳猫王！！！', emoji: '💎' },
     ];
 
     function getComboReaction(count) {
