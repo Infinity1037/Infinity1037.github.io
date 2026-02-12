@@ -15,10 +15,19 @@
     <title>Yian的猫</title>
     <meta name="description" content="Yian的猫咪虚拟宠物，和朋友一起养猫~">
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🐱</text></svg>">
+    <meta property="og:title" content="Yian的猫">
+    <meta property="og:description" content="和朋友一起养一只虚拟猫咪~">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://changle.me">
     <link rel="stylesheet" href="style.css">
 </head>
 
 <body>
+    <noscript>
+        <div style="display:flex;justify-content:center;align-items:center;height:100vh;color:#fff;font-size:1.2rem;text-align:center;padding:2rem;background:#667eea;">
+            请启用 JavaScript 来访问 Yian 的猫窝
+        </div>
+    </noscript>
     <div class="background-overlay"></div>
     <div class="weather-layer" id="weather-layer"></div>
     <div class="particle-layer" id="particle-layer"></div>
@@ -64,8 +73,17 @@
 
     <main class="container" id="main-content" style="opacity: 0;">
         <div class="greeting-box">
-            <h1 id="greeting">早上好</h1>
-            <p class="subtitle">愿咪拥有美好的一天</p>
+            <!-- 顶部：问候 + 时间 -->
+            <div class="top-bar">
+                <div class="top-left">
+                    <h1 id="greeting">早上好</h1>
+                    <p class="subtitle">愿咪拥有美好的一天</p>
+                </div>
+                <div class="top-right">
+                    <div class="top-time" id="time">00:00</div>
+                    <div class="top-date" id="date"></div>
+                </div>
+            </div>
 
             <div class="cat-area">
                 <!-- 接鱼小游戏容器 -->
@@ -74,7 +92,7 @@
                 <!-- 猫咪对话 -->
                 <div class="cat-speech" id="cat-speech">今天心情不错~</div>
 
-                <!-- 猫咪（添加浮动动画） -->
+                <!-- 猫咪 -->
                 <div class="cat-wrapper">
                     <div class="cat-static" id="cat">
                         <svg class="cat-svg" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
@@ -113,11 +131,13 @@
                             <path d="M160 140 Q180 135 170 115 Q160 100 140 120" fill="none" stroke="#FFFFFF"
                                 stroke-width="12" stroke-linecap="round" />
                         </svg>
+                        <div class="cat-accessory" id="cat-accessory"></div>
                         <div class="meow-bubble" id="meow-bubble">喵~</div>
                     </div>
+                    <button class="accessory-btn" id="accessory-btn" title="装扮">🎀</button>
                 </div>
 
-                <!-- 属性条（带数值） -->
+                <!-- 属性条 -->
                 <div class="stats-simple">
                     <div class="stat-item" id="hunger-row">
                         <span class="stat-icon">🍖</span>
@@ -142,7 +162,7 @@
                     </div>
                 </div>
 
-                <!-- 按钮 -->
+                <!-- 操作按钮 -->
                 <div class="cat-actions">
                     <button class="action-btn feed-btn" id="feed-btn">
                         <span class="btn-icon">🐟</span>
@@ -157,56 +177,189 @@
                         <span class="btn-text">玩耍</span>
                     </button>
                 </div>
+                <div class="food-menu" id="food-menu"></div>
 
-                <!-- 统计 + 徽章 -->
-                <div class="stats-info">
+                <!-- 快捷信息卡片 -->
+                <div class="quick-cards">
+                    <div class="quick-card love-card" data-panel="love-panel">
+                        <div class="qc-icon">💕</div>
+                        <div class="qc-content">
+                            <div class="qc-label">在一起</div>
+                            <div class="qc-value"><span id="love-days">0</span> 天</div>
+                        </div>
+                    </div>
+                    <div class="quick-card" data-panel="fortune-panel">
+                        <div class="qc-icon">🔮</div>
+                        <div class="qc-content">
+                            <div class="qc-label">今日运势</div>
+                            <div class="qc-value" id="fortune-mini">去抽签</div>
+                        </div>
+                    </div>
+                    <div class="quick-card" data-panel="quest-panel">
+                        <div class="qc-icon">�</div>
+                        <div class="qc-content">
+                            <div class="qc-label">今日任务</div>
+                            <div class="qc-value" id="quest-mini">查看</div>
+                        </div>
+                    </div>
+                    <div class="quick-card" data-panel="chat-panel">
+                        <div class="qc-icon">💬</div>
+                        <div class="qc-content">
+                            <div class="qc-label">留言板</div>
+                            <div class="qc-value" id="msg-mini">去看看</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 情话打字机 -->
+                <div class="quote-card" id="quote-card">
+                    <div class="quote-deco">🌙</div>
+                    <div class="quote-main">
+                        <div class="quote-text" id="quote-text"></div>
+                        <div class="quote-cursor">|</div>
+                    </div>
+                    <div class="quote-hint" id="quote-hint">每日一句</div>
+                </div>
+
+                <!-- 迷你信息栏 -->
+                <div class="mini-info">
+                    <span>Lv.<span id="cat-level">1</span></span>
+                    <span class="stats-divider">·</span>
+                    <span class="partner-status-bar" id="partner-status"><span class="partner-dot"></span> TA不在</span>
+                    <span class="stats-divider">·</span>
+                    <span>🔥<span id="streak-mini">0</span>天</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 底部导航栏 -->
+        <nav class="bottom-nav" id="bottom-nav">
+            <button class="nav-item" data-panel="love-panel">
+                <span class="nav-icon">❤️</span>
+                <span class="nav-label">恋爱</span>
+            </button>
+            <button class="nav-item" data-panel="fortune-panel">
+                <span class="nav-icon">🔮</span>
+                <span class="nav-label">运势</span>
+            </button>
+            <button class="nav-item" data-panel="quest-panel">
+                <span class="nav-icon">📋</span>
+                <span class="nav-label">任务</span>
+            </button>
+            <button class="nav-item" data-panel="chat-panel">
+                <span class="nav-icon">💬</span>
+                <span class="nav-label">留言</span>
+            </button>
+            <button class="nav-item" data-panel="whisper-panel">
+                <span class="nav-icon">💌</span>
+                <span class="nav-label">悄悄话</span>
+            </button>
+        </nav>
+    </main>
+
+    <!-- ===== 功能面板（底部弹出） ===== -->
+
+    <!-- 恋爱面板 -->
+    <div class="panel-overlay" id="love-panel">
+        <div class="panel-sheet">
+            <div class="panel-handle"></div>
+            <div class="panel-title">❤️ 恋爱</div>
+            <div class="panel-body">
+                <div class="love-container">
+                    <div class="love-days"><span class="love-heart">💕</span> 在一起第 <span id="love-days-panel">0</span> 天</div>
+                    <div class="love-quote" id="love-quote-panel"></div>
+                    <div class="holiday-countdown" id="holiday-countdown-panel"></div>
+                </div>
+                <div class="panel-section">
+                    <div class="streak-row" id="streak-row">
+                        <span class="streak-flame">🔥</span>
+                        <span>连续签到 <span id="streak-count">0</span> 天</span>
+                    </div>
+                </div>
+                <div class="panel-section">
                     <div class="stats-row">
-                        <span>Lv.<span id="cat-level">1</span></span>
-                        <span class="stats-divider">·</span>
                         <span>喂食 <span id="total-feeds">0</span></span>
                         <span class="stats-divider">·</span>
                         <span>互动 <span id="total-pets">0</span></span>
                         <span class="stats-divider">·</span>
                         <span>玩耍 <span id="total-plays">0</span></span>
                     </div>
-                    <div class="streak-row" id="streak-row">
-                        <span class="streak-flame">🔥</span>
-                        <span>连续签到 <span id="streak-count">0</span> 天</span>
-                    </div>
                     <div class="badges-row" id="badges-row"></div>
                 </div>
-            </div>
-
-            <div class="time-container">
-                <div id="time">00:00:00</div>
-                <div id="date">YYYY年MM月DD日 星期X</div>
-            </div>
-
-            <div class="fortune-container" id="fortune-container">
-                <div class="fortune-card" id="fortune-card">
-                    <span class="fortune-icon">✨</span>
-                    <span class="fortune-text" id="fortune-text">点击抽取今日运势</span>
-                </div>
-            </div>
-
-            <div class="msg-board" id="msg-board">
-                <div class="msg-latest" id="msg-latest">
-                    <span class="msg-icon">💬</span>
-                    <span class="msg-content" id="msg-content">还没有留言，点击说点什么~</span>
+                <div class="panel-section">
+                    <div class="cat-diary" id="cat-diary">📖 猫咪还在想今天写什么...</div>
                 </div>
             </div>
         </div>
-    </main>
+    </div>
 
-    <!-- 留言输入浮层 -->
-    <div class="msg-overlay" id="msg-overlay">
-        <div class="msg-modal">
-            <div class="msg-modal-title">给大家留句话 😺</div>
-            <input type="text" id="msg-input" class="msg-input" placeholder="想说什么~" maxlength="30" autocomplete="off">
-            <div class="msg-modal-actions">
-                <button class="msg-cancel-btn" id="msg-cancel">算了</button>
-                <button class="msg-send-btn" id="msg-send">发送</button>
+    <!-- 运势面板 -->
+    <div class="panel-overlay" id="fortune-panel">
+        <div class="panel-sheet">
+            <div class="panel-handle"></div>
+            <div class="panel-title">🔮 今日运势</div>
+            <div class="panel-body">
+                <div class="fortune-container" id="fortune-container">
+                    <div class="fortune-card" id="fortune-card">
+                        <span class="fortune-icon">✨</span>
+                        <span class="fortune-text" id="fortune-text">点击抽取今日运势</span>
+                    </div>
+                </div>
             </div>
+        </div>
+    </div>
+
+    <!-- 任务面板 -->
+    <div class="panel-overlay" id="quest-panel">
+        <div class="panel-sheet">
+            <div class="panel-handle"></div>
+            <div class="panel-title">📋 今日任务</div>
+            <div class="panel-body">
+                <div class="quest-container">
+                    <div class="quest-list" id="quest-list"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 留言面板 -->
+    <div class="panel-overlay" id="chat-panel">
+        <div class="panel-sheet">
+            <div class="panel-handle"></div>
+            <div class="panel-title">💬 留言板</div>
+            <div class="panel-body">
+                <div class="msg-list" id="msg-list">
+                    <div class="msg-empty">还没有留言~</div>
+                </div>
+            </div>
+            <div class="panel-input-bar">
+                <input type="text" id="msg-input" class="panel-input" placeholder="说点什么~" maxlength="30" autocomplete="off">
+                <button class="panel-send-btn" id="msg-send">发送</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 悄悄话面板 -->
+    <div class="panel-overlay" id="whisper-panel">
+        <div class="panel-sheet">
+            <div class="panel-handle"></div>
+            <div class="panel-title">💌 悄悄话</div>
+            <div class="panel-body">
+                <div class="whisper-hint">对方下次打开时才能看到哦~</div>
+            </div>
+            <div class="panel-input-bar">
+                <input type="text" id="whisper-input" class="panel-input" placeholder="想对TA说..." maxlength="50" autocomplete="off">
+                <button class="panel-send-btn" id="whisper-send">寄出</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 悄悄话弹窗（收到时） -->
+    <div class="whisper-popup" id="whisper-popup">
+        <div class="whisper-popup-inner">
+            <div class="whisper-popup-header">💌 你收到一封悄悄话</div>
+            <div class="whisper-popup-text" id="whisper-popup-text"></div>
+            <button class="whisper-popup-btn" id="whisper-popup-close">知道啦~</button>
         </div>
     </div>
 
@@ -215,6 +368,16 @@
         <span class="event-icon" id="event-icon">🦋</span>
         <span class="event-text" id="event-text"></span>
     </div>
+
+    <!-- 成就解锁弹窗 -->
+    <div class="badge-popup" id="badge-popup">
+        <div class="badge-popup-icon"></div>
+        <div class="badge-popup-label">成就解锁!</div>
+        <div class="badge-popup-name"></div>
+    </div>
+
+    <!-- 双人互动提示 -->
+    <div class="action-toast" id="action-toast"></div>
 
     <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js" defer></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-database-compat.js" defer></script>

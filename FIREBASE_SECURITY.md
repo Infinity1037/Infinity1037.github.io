@@ -53,6 +53,20 @@
         ".write": true,
         ".validate": "newData.hasChildren(['text', 'time']) && newData.child('text').isString() && newData.child('text').val().length <= 30 && newData.child('time').isNumber()"
       }
+    },
+    "dailyFortune": {
+      ".read": true,
+      "$date": {
+        ".write": "!data.exists()",
+        ".validate": "newData.hasChildren(['level', 'msg', 'color']) && newData.child('level').isString() && newData.child('msg').isString() && newData.child('color').isString()"
+      }
+    },
+    "recentActions": {
+      ".read": true,
+      "$actionId": {
+        ".write": true,
+        ".validate": "newData.hasChildren(['type', 'sid', 'time']) && newData.child('type').isString() && newData.child('sid').isString() && newData.child('time').isNumber()"
+      }
     }
   }
 }
@@ -71,6 +85,16 @@
 - **读权限**: 允许读取（客户端需要获取 hash 进行比对）
 - **写权限**: 仅当数据不存在时允许写入（防止恶意修改授权码）
 - **Hash 校验**: 确保是 64 字符的 SHA-256 hash
+
+### `dailyFortune` 节点
+- **读权限**: 允许所有人读取
+- **写权限**: 仅当该日期的运势不存在时允许写入（每日只能抽一次）
+- **数据校验**: 必须包含 `level`、`msg`、`color` 字段，且均为字符串
+
+### `recentActions` 节点
+- **读权限**: 允许所有人读取
+- **写权限**: 允许写入新操作记录
+- **数据校验**: 必须包含 `type`（操作类型）、`sid`（会话ID）、`time`（时间戳）
 
 ### `messages` 节点
 - **读权限**: 允许所有人读取
