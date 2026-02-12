@@ -41,16 +41,9 @@ body.page-hidden *::after {
     animation-play-state: paused !important;
 }
 
-/* 键盘弹出时弹窗居中适配 */
-body.keyboard-open .msg-overlay,
-body.keyboard-open .whisper-overlay {
-    align-items: flex-start;
-    padding-top: 10vh;
-}
-
-body.keyboard-open .msg-modal,
-body.keyboard-open .whisper-modal {
-    margin-top: 0;
+/* 键盘弹出时面板输入适配 */
+body.keyboard-open .panel-input-bar {
+    padding-bottom: 10px;
 }
 
 html {
@@ -595,6 +588,31 @@ body::-webkit-scrollbar {
     border-radius: 2px;
     margin: 10px auto 8px;
     flex-shrink: 0;
+}
+
+.panel-close {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    width: 32px;
+    height: 32px;
+    border: none;
+    border-radius: 50%;
+    background: rgba(0,0,0,0.06);
+    color: #999;
+    font-size: 16px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    -webkit-tap-highlight-color: transparent;
+    transition: all 0.15s;
+    z-index: 5;
+}
+
+.panel-close:active {
+    transform: scale(0.85);
+    background: rgba(0,0,0,0.12);
 }
 
 .panel-title {
@@ -1940,45 +1958,6 @@ h1 {
     100% { transform: scale(1); }
 }
 
-/* 留言板 */
-.msg-board {
-    margin-top: 0;
-    width: 100%;
-}
-
-.msg-latest {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 6px;
-    padding: 12px 16px;
-    background: linear-gradient(135deg, rgba(100, 140, 255, 0.08), rgba(180, 140, 255, 0.06));
-    border: 1px solid rgba(100, 140, 255, 0.12);
-    border-radius: 14px;
-    cursor: pointer;
-    transition: all 0.2s;
-    -webkit-tap-highlight-color: transparent;
-    min-height: 40px;
-}
-
-.msg-latest:active {
-    transform: scale(0.97);
-    background: rgba(100, 140, 255, 0.12);
-}
-
-.msg-icon {
-    font-size: 13px;
-    flex-shrink: 0;
-}
-
-.msg-content {
-    font-size: 13px;
-    color: #666;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    max-width: 240px;
-}
 
 /* 猫咪小日记 */
 .cat-diary-container {
@@ -2009,41 +1988,6 @@ h1 {
     font-style: normal;
 }
 
-/* 悄悄话入口 */
-.whisper-entry {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 6px;
-    padding: 12px 16px;
-    margin-top: 0;
-    background: linear-gradient(135deg, rgba(255, 180, 220, 0.15), rgba(200, 160, 255, 0.1));
-    border: 1px dashed rgba(255, 140, 200, 0.35);
-    border-radius: 16px;
-    cursor: pointer;
-    font-size: 14px;
-    color: #666;
-    transition: all 0.2s;
-    -webkit-tap-highlight-color: transparent;
-    min-height: 42px;
-}
-
-.whisper-entry:active {
-    transform: scale(0.97);
-    background: linear-gradient(135deg, rgba(255, 180, 220, 0.2), rgba(200, 160, 255, 0.15));
-    opacity: 1;
-}
-
-.whisper-icon {
-    font-size: 14px;
-    animation: letterFloat 3s ease-in-out infinite;
-    display: inline-block;
-}
-
-@keyframes letterFloat {
-    0%, 100% { transform: translateY(0) rotate(0deg); }
-    50% { transform: translateY(-2px) rotate(3deg); }
-}
 
 /* 悄悄话弹窗（收到时） */
 .whisper-popup {
@@ -2147,363 +2091,15 @@ h1 {
     transform: scale(0.95);
 }
 
-/* 悄悄话输入浮层 */
-.whisper-overlay {
-    position: fixed;
-    inset: 0;
-    background: rgba(0, 0, 0, 0.5);
-    z-index: 150;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity 0.3s;
-}
 
-.whisper-overlay.show {
-    opacity: 1;
-    pointer-events: auto;
-}
-
-.whisper-modal {
-    background: linear-gradient(135deg, #fff5f5, #fff0f6);
-    border-radius: 20px;
-    padding: 24px;
-    width: 85%;
-    max-width: 320px;
-    text-align: center;
-    transform: scale(0.9);
-    transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1);
-}
-
-.whisper-overlay.show .whisper-modal {
-    transform: scale(1);
-}
-
-.whisper-modal-title {
-    font-size: 16px;
-    font-weight: 700;
-    color: #e75480;
-    margin-bottom: 14px;
-}
-
-.whisper-input {
-    width: 100%;
-    padding: 10px 14px;
-    border: 1.5px solid #f0c0d0;
-    border-radius: 12px;
-    font-size: 14px;
-    outline: none;
-    background: #fff;
-    box-sizing: border-box;
-    transition: border-color 0.2s;
-}
-
-.whisper-input:focus {
-    border-color: #e75480;
-}
-
-.whisper-modal-hint {
-    font-size: 11px;
-    color: #c08090;
-    margin-top: 6px;
-}
-
-.whisper-modal-actions {
-    margin-top: 14px;
-    display: flex;
-    gap: 10px;
-    justify-content: center;
-}
-
-.whisper-cancel-btn {
-    padding: 8px 20px;
-    border: 1px solid #ddd;
-    border-radius: 14px;
-    background: #fff;
-    color: #999;
-    font-size: 13px;
-    cursor: pointer;
-}
-
-.whisper-send-btn {
-    padding: 8px 24px;
-    border: none;
-    border-radius: 14px;
-    background: linear-gradient(135deg, #f472b6, #e75480);
-    color: #fff;
-    font-size: 13px;
-    font-weight: 600;
-    cursor: pointer;
-}
-
-.whisper-send-btn:active {
-    transform: scale(0.95);
-}
-
-/* 留言墙浮层 */
-.msg-wall-overlay {
-    position: fixed;
-    inset: 0;
-    background: rgba(0, 0, 0, 0.5);
-    z-index: 100;
-    display: flex;
-    align-items: flex-end;
-    justify-content: center;
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity 0.3s;
-}
-
-.msg-wall-overlay.show {
-    opacity: 1;
-    pointer-events: auto;
-}
-
-.msg-wall-modal {
-    width: 100%;
-    max-width: 380px;
-    max-height: 70vh;
-    max-height: 70dvh;
-    background: linear-gradient(180deg, #fff, #fdf2f8);
-    border-radius: 24px 24px 0 0;
-    padding: 20px 16px calc(16px + env(safe-area-inset-bottom, 0px));
-    display: flex;
-    flex-direction: column;
-    transform: translateY(100%);
-    transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1);
-    box-shadow: 0 -8px 40px rgba(0,0,0,0.15);
-}
-
-.msg-wall-modal::before {
-    content: '';
-    width: 36px;
-    height: 4px;
-    background: rgba(0,0,0,0.12);
-    border-radius: 2px;
-    margin: 0 auto 12px;
-    flex-shrink: 0;
-}
-
-.msg-wall-overlay.show .msg-wall-modal {
-    transform: translateY(0);
-}
-
-.msg-wall-title {
-    font-size: 16px;
-    font-weight: 700;
-    background: linear-gradient(135deg, #667eea, #764ba2);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-    text-align: center;
-    margin-bottom: 12px;
-    flex-shrink: 0;
-}
-
-.msg-wall-list {
-    flex: 1;
-    overflow-y: auto;
-    -webkit-overflow-scrolling: touch;
-    overscroll-behavior: contain;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    padding: 4px 2px;
-    min-height: 80px;
-    scrollbar-width: thin;
-    scrollbar-color: rgba(0,0,0,0.1) transparent;
-}
-
-.msg-wall-list::-webkit-scrollbar {
-    width: 3px;
-}
-
-.msg-wall-list::-webkit-scrollbar-thumb {
-    background: rgba(0,0,0,0.12);
-    border-radius: 3px;
-}
-
-.msg-wall-item {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    gap: 8px;
-    padding: 12px 14px;
-    background: rgba(255, 255, 255, 0.8);
-    border-radius: 14px;
-    border: 1px solid rgba(0,0,0,0.04);
-    box-shadow: 0 1px 4px rgba(0,0,0,0.04);
-    transition: transform 0.15s;
-}
-
-.msg-wall-item:active {
-    transform: scale(0.98);
-}
-
-.msg-wall-text {
-    font-size: 13px;
-    color: #333;
-    flex: 1;
-    word-break: break-all;
-    line-height: 1.4;
-}
-
-.msg-wall-time {
-    font-size: 10px;
-    color: #aaa;
-    white-space: nowrap;
-    flex-shrink: 0;
-    margin-top: 2px;
-}
-
-.msg-wall-empty {
-    text-align: center;
-    color: #bbb;
-    font-size: 13px;
-    padding: 24px 0;
-}
-
-.msg-wall-write-btn {
-    margin-top: 12px;
-    width: 100%;
-    padding: 14px;
-    border: none;
-    border-radius: 16px;
-    background: linear-gradient(135deg, #667eea, #764ba2);
-    color: #fff;
-    font-size: 15px;
-    font-weight: 600;
-    cursor: pointer;
-    -webkit-tap-highlight-color: transparent;
-    transition: all 0.15s;
-    flex-shrink: 0;
-    min-height: 48px;
-    box-shadow: 0 4px 16px rgba(102, 126, 234, 0.3);
-}
-
-.msg-wall-write-btn:active {
-    transform: scale(0.97);
-    opacity: 0.85;
-}
-
-/* 留言浮层 */
-.msg-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(0, 0, 0, 0.5);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    z-index: 200;
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity 0.25s;
-    backdrop-filter: blur(4px);
-}
-
-.msg-overlay.show {
-    opacity: 1;
-    pointer-events: auto;
-}
-
-.msg-modal {
-    background: rgba(255, 255, 255, 0.97);
-    color: #333;
-    border-radius: 24px;
-    padding: 24px;
-    width: 88%;
-    max-width: 320px;
-    text-align: center;
-    transform: scale(0.9);
-    transition: transform 0.25s cubic-bezier(0.68, -0.55, 0.265, 1.55);
-    box-shadow: 0 16px 48px rgba(0,0,0,0.2);
-}
-
-.msg-overlay.show .msg-modal {
-    transform: scale(1);
-}
-
-.msg-modal-title {
-    font-size: 15px;
-    font-weight: 600;
-    margin-bottom: 14px;
-}
-
-.msg-input {
-    width: 100%;
-    padding: 12px 14px;
-    border: 1px solid #ddd;
-    border-radius: 12px;
-    font-size: 15px;
-    text-align: center;
-    outline: none;
-    transition: border-color 0.2s;
-    background: #f8f8f8;
-    color: #333;
-    -webkit-appearance: none;
-    appearance: none;
-}
-
-.msg-input:focus {
-    border-color: #667eea;
-}
-
-.msg-modal-actions {
-    display: flex;
-    gap: 10px;
-    margin-top: 14px;
-}
-
-.msg-cancel-btn,
-.msg-send-btn {
-    flex: 1;
-    padding: 12px;
-    border: none;
-    border-radius: 14px;
-    font-size: 15px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.15s;
-    -webkit-tap-highlight-color: transparent;
-    min-height: 44px;
-}
-
-.msg-cancel-btn {
-    background: #eee;
-    color: #999;
-}
-
-.msg-send-btn {
-    background: linear-gradient(135deg, #667eea, #764ba2);
-    color: white;
-}
-
-.msg-cancel-btn:active,
-.msg-send-btn:active {
-    transform: scale(0.95);
-}
 
 @media (max-width: 380px) {
-    h1 {
-        font-size: 1.8rem;
-    }
-
-    #time {
-        font-size: 2rem;
-    }
-
-    .cat-static {
-        width: 75px;
-    }
-
-    .greeting-box {
-        padding: 0.8rem 1rem;
-    }
+    h1 { font-size: 1rem; }
+    .top-time { font-size: 1.1rem; }
+    .cat-static { width: 90px; }
+    .greeting-box { padding: 0.6rem 0.8rem; }
+    .quick-card { padding: 6px 8px; }
+    .qc-value { font-size: 11px; }
 }
 
 body.theme-morning {

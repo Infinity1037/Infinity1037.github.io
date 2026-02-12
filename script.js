@@ -2369,12 +2369,24 @@ function openPanel(panelId) {
         btn.classList.toggle('active', btn.dataset.panel === panelId);
     });
 
+    // 自动聚焦面板内输入框
+    const input = panel.querySelector('.panel-input');
+    if (input) setTimeout(() => input.focus(), 400);
+
     if (navigator.vibrate) navigator.vibrate(10);
 }
 
 function closePanel(panelId) {
     const panel = document.getElementById(panelId || activePanel);
-    if (panel) panel.classList.remove('show');
+    if (panel) {
+        panel.classList.remove('show');
+        // 收起键盘
+        const input = panel.querySelector('.panel-input');
+        if (input) input.blur();
+        // 重置滑动状态
+        const sheet = panel.querySelector('.panel-sheet');
+        if (sheet) sheet.style.transform = '';
+    }
     if (activePanel) unlockScroll();
     activePanel = null;
 
@@ -2391,6 +2403,7 @@ function initBottomNav() {
             } else {
                 openPanel(panelId);
             }
+            if (navigator.vibrate) navigator.vibrate(8);
         });
     });
 
@@ -2400,6 +2413,7 @@ function initBottomNav() {
             e.preventDefault();
             const panelId = card.dataset.panel;
             if (panelId) openPanel(panelId);
+            if (navigator.vibrate) navigator.vibrate(8);
         });
     });
 
@@ -2408,6 +2422,65 @@ function initBottomNav() {
         overlay.addEventListener('pointerdown', (e) => {
             if (e.target === overlay) closePanel();
         });
+    });
+
+    // 关闭按钮
+    document.querySelectorAll('.panel-close').forEach(btn => {
+        btn.addEventListener('pointerdown', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            closePanel();
+        });
+    });
+
+    // 右滑手势关闭面板
+    initPanelSwipe();
+}
+
+// 面板右滑手势关闭
+function initPanelSwipe() {
+    let startX = 0, startY = 0, swiping = false, sheet = null;
+
+    document.querySelectorAll('.panel-sheet').forEach(el => {
+        el.addEventListener('touchstart', (e) => {
+            startX = e.touches[0].clientX;
+            startY = e.touches[0].clientY;
+            swiping = false;
+            sheet = el;
+        }, { passive: true });
+
+        el.addEventListener('touchmove', (e) => {
+            if (!sheet) return;
+            const dx = e.touches[0].clientX - startX;
+            const dy = e.touches[0].clientY - startY;
+
+            // 只在水平滑动且向右时启用
+            if (!swiping && Math.abs(dx) > 10 && Math.abs(dx) > Math.abs(dy) * 1.5 && dx > 0) {
+                swiping = true;
+            }
+
+            if (swiping) {
+                e.preventDefault();
+                const offset = Math.max(0, dx);
+                sheet.style.transform = 'translateX(' + offset + 'px)';
+                sheet.style.transition = 'none';
+            }
+        }, { passive: false });
+
+        el.addEventListener('touchend', (e) => {
+            if (!sheet || !swiping) return;
+            const dx = e.changedTouches[0].clientX - startX;
+            sheet.style.transition = '';
+
+            if (dx > 80) {
+                closePanel();
+                if (navigator.vibrate) navigator.vibrate(10);
+            } else {
+                sheet.style.transform = '';
+            }
+            swiping = false;
+            sheet = null;
+        }, { passive: true });
     });
 }
 
