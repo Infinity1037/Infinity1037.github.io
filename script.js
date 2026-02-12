@@ -1057,9 +1057,14 @@ function getCatLevel() {
     return 1;
 }
 
+function getLocalDateStr(d) {
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+}
+
 function updateStreak() {
-    const today = new Date().toISOString().slice(0, 10);
-    const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+    const today = getLocalDateStr(new Date());
+    const yd = new Date(); yd.setDate(yd.getDate() - 1);
+    const yesterday = getLocalDateStr(yd);
     
     catRef.transaction((current) => {
         if (!current) return;
