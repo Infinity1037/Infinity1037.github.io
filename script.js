@@ -827,11 +827,16 @@ const MSG_COOLDOWN = 5000;
 
 function sendMessage() {
     const input = document.getElementById('msg-input');
+    const btn = document.getElementById('msg-send');
     const text = input.value.trim();
-    if (!text) return;
+    if (!text) { input.focus(); return; }
 
     const now = Date.now();
-    if (now - lastMsgTime < MSG_COOLDOWN) return;
+    if (now - lastMsgTime < MSG_COOLDOWN) {
+        const remain = Math.ceil((MSG_COOLDOWN - (now - lastMsgTime)) / 1000);
+        showBubble(remain + '秒后才能再发~');
+        return;
+    }
     lastMsgTime = now;
 
     msgRef.push({
@@ -851,7 +856,13 @@ function sendMessage() {
     });
 
     input.value = '';
-    showBubble('留言成功~');
+    input.blur();
+    // 发送成功动画
+    if (btn) {
+        btn.textContent = '✓';
+        btn.style.pointerEvents = 'none';
+        setTimeout(() => { btn.textContent = '发送'; btn.style.pointerEvents = ''; }, 1500);
+    }
     if (navigator.vibrate) navigator.vibrate(15);
 }
 
@@ -904,8 +915,9 @@ function updateOnlineIndicator(isOnline) {
 // ==================== 悄悄话信箱 ====================
 function sendWhisper() {
     const input = document.getElementById('whisper-input');
+    const btn = document.getElementById('whisper-send');
     const text = input ? input.value.trim() : '';
-    if (!text) return;
+    if (!text) { if (input) input.focus(); return; }
 
     whisperRef.push({
         text: text,
@@ -915,7 +927,12 @@ function sendWhisper() {
     });
 
     input.value = '';
-    showBubble('悄悄话已寄出~');
+    input.blur();
+    if (btn) {
+        btn.textContent = '已寄出 💌';
+        btn.style.pointerEvents = 'none';
+        setTimeout(() => { btn.textContent = '寄出'; btn.style.pointerEvents = ''; }, 2000);
+    }
     if (navigator.vibrate) navigator.vibrate([15, 30, 15]);
 
     // 清理旧悄悄话，只保留最近 10 条
@@ -1315,6 +1332,8 @@ function feedCatWith(foodId, e) {
     localStorage.setItem('food_used', JSON.stringify(foodUsedToday));
 
     DOM.feedBtn.classList.add('cooldown');
+    const feedText = DOM.feedBtn.querySelector('.btn-text');
+    if (feedText) { feedText.textContent = '冷却中'; setTimeout(() => { feedText.textContent = '喂食'; }, COOLDOWN); }
     setTimeout(() => DOM.feedBtn.classList.remove('cooldown'), COOLDOWN);
 
     const eff = food.effect;
@@ -1347,6 +1366,8 @@ function petCat() {
     lastPetTime = now;
 
     DOM.petBtn.classList.add('cooldown');
+    const petText = DOM.petBtn.querySelector('.btn-text');
+    if (petText) { petText.textContent = '冷却中'; setTimeout(() => { petText.textContent = '抚摸'; }, COOLDOWN); }
     setTimeout(() => DOM.petBtn.classList.remove('cooldown'), COOLDOWN);
 
     catState.mood = Math.min(MAX_STAT, catState.mood + PET_EFFECT.mood);
@@ -1377,6 +1398,8 @@ function playCat() {
     lastPlayTime = now;
 
     DOM.playBtn.classList.add('cooldown');
+    const playText = DOM.playBtn.querySelector('.btn-text');
+    if (playText) { playText.textContent = '冷却中'; setTimeout(() => { playText.textContent = '玩耍'; }, COOLDOWN); }
     setTimeout(() => DOM.playBtn.classList.remove('cooldown'), COOLDOWN);
 
     catState.energy = Math.min(MAX_STAT, catState.energy + PLAY_EFFECT.energy);
@@ -2369,10 +2392,6 @@ function openPanel(panelId) {
         btn.classList.toggle('active', btn.dataset.panel === panelId);
     });
 
-    // 自动聚焦面板内输入框
-    const input = panel.querySelector('.panel-input');
-    if (input) setTimeout(() => input.focus(), 400);
-
     if (navigator.vibrate) navigator.vibrate(10);
 }
 
@@ -2437,25 +2456,34 @@ function initBottomNav() {
     initPanelSwipe();
 }
 
-// 面板右滑手势关闭
+// 面板右滑手势关闭（仅从左边缘40px内起始，避免与内容滚动冲突）
 function initPanelSwipe() {
-    let startX = 0, startY = 0, swiping = false, sheet = null;
+    let startX = 0, startY = 0, swiping = false, locked = false, sheet = null;
 
     document.querySelectorAll('.panel-sheet').forEach(el => {
         el.addEventListener('touchstart', (e) => {
-            startX = e.touches[0].clientX;
-            startY = e.touches[0].clientY;
+            const touch = e.touches[0];
+            const rect = el.getBoundingClientRect();
+            startX = touch.clientX;
+            startY = touch.clientY;
             swiping = false;
-            sheet = el;
+            locked = false;
+            // 只在面板左侧边缘40px内开始才允许滑动
+            sheet = (touch.clientX - rect.left < 40) ? el : null;
         }, { passive: true });
 
         el.addEventListener('touchmove', (e) => {
-            if (!sheet) return;
+            if (!sheet || locked) return;
             const dx = e.touches[0].clientX - startX;
             const dy = e.touches[0].clientY - startY;
 
-            // 只在水平滑动且向右时启用
-            if (!swiping && Math.abs(dx) > 10 && Math.abs(dx) > Math.abs(dy) * 1.5 && dx > 0) {
+            // 如果先纵向滑动，锁定为滚动，不触发手势
+            if (!swiping && Math.abs(dy) > 10 && Math.abs(dy) > Math.abs(dx)) {
+                locked = true;
+                return;
+            }
+
+            if (!swiping && dx > 12 && Math.abs(dx) > Math.abs(dy) * 1.5) {
                 swiping = true;
             }
 
@@ -2468,7 +2496,7 @@ function initPanelSwipe() {
         }, { passive: false });
 
         el.addEventListener('touchend', (e) => {
-            if (!sheet || !swiping) return;
+            if (!sheet || !swiping) { sheet = null; return; }
             const dx = e.changedTouches[0].clientX - startX;
             sheet.style.transition = '';
 
