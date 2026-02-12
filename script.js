@@ -1146,12 +1146,12 @@ function updateDisplay() {
     const streakMini = document.getElementById('streak-mini');
     if (streakMini) streakMini.textContent = catState.streak || 0;
 
-    // 睡眠模式禁用按钮
+    // 睡眠模式按钮变灰（不禁用，让点击提示能正常显示）
     const actionBtns = [DOM.feedBtn, DOM.petBtn, DOM.playBtn];
     actionBtns.forEach(btn => {
         if (btn) {
-            btn.disabled = isSleeping;
-            btn.style.opacity = isSleeping ? '0.4' : '';
+            btn.style.opacity = isSleeping ? '0.5' : '';
+            btn.classList.toggle('sleep-disabled', isSleeping);
         }
     });
 
@@ -1313,9 +1313,20 @@ let lastPetTime = 0;
 let lastPlayTime = 0;
 const COOLDOWN = 300;
 
+function sleepBtnFeedback(btn, msg) {
+    showBubble(msg);
+    if (btn) {
+        btn.classList.remove('sleep-shake');
+        void btn.offsetWidth;
+        btn.classList.add('sleep-shake');
+        setTimeout(() => btn.classList.remove('sleep-shake'), 400);
+    }
+    if (navigator.vibrate) navigator.vibrate([10, 30, 10]);
+}
+
 // 食物菜单
 function toggleFoodMenu() {
-    if (isSleeping) { showBubble('猫咪在睡觉，别吵它~'); return; }
+    if (isSleeping) { sleepBtnFeedback(DOM.feedBtn, '嘘~Yian喵在睡觉呢，别吵它~'); return; }
     const menu = document.getElementById('food-menu');
     if (!menu) return;
     const isOpen = menu.classList.contains('show');
@@ -1400,7 +1411,7 @@ function feedCatWith(foodId, e) {
 }
 
 function petCat() {
-    if (isSleeping) { showBubble('嘳，让它再睡会儿~'); return; }
+    if (isSleeping) { sleepBtnFeedback(DOM.petBtn, '轻点…Yian喵在做美梦呢~'); return; }
     const now = Date.now();
     if (now - lastPetTime < COOLDOWN) return;
     lastPetTime = now;
@@ -1432,7 +1443,7 @@ function petCat() {
 }
 
 function playCat() {
-    if (isSleeping) { showBubble('猫咪正在做美梦~'); return; }
+    if (isSleeping) { sleepBtnFeedback(DOM.playBtn, 'Yian喵正蜷着睡觉，明天再玩吧~'); return; }
     const now = Date.now();
     if (now - lastPlayTime < COOLDOWN) return;
     lastPlayTime = now;
@@ -2358,14 +2369,16 @@ function initApp() {
 
     DOM.petBtn.addEventListener('pointerdown', (e) => {
         e.preventDefault();
+        if (isSleeping) { petCat(); return; }
         petCat();
         createParticles(e.clientX, e.clientY, '💖');
     });
 
     DOM.playBtn.addEventListener('pointerdown', (e) => {
         e.preventDefault();
+        if (isSleeping) { playCat(); return; }
         playCat();
-        createParticles(e.clientX, e.clientY, '🎾');
+        createParticles(e.clientX, e.clientY, '🧶');
     });
 
     // 猫咪点击：连续戳猫 combo + 长按彩蛋
