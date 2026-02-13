@@ -2512,6 +2512,9 @@ function closePanel(panelId) {
         if (aiStreamReader) { try { aiStreamReader.cancel(); } catch(e){} aiStreamReader = null; }
         aiCurrentSessionId = null;
         aiIsGenerating = false;
+        aiDeleting = false;
+        const confirmOverlay = document.getElementById('ai-confirm-overlay');
+        if (confirmOverlay) confirmOverlay.classList.remove('show');
         // 重置视图到身份选择（首屏）
         const views = ['pick', 'list', 'chat'];
         views.forEach(v => {
@@ -2784,6 +2787,9 @@ function initAiChat() {
         stopMsgListener();
         if (aiStreamReader) { try { aiStreamReader.cancel(); } catch(e){} aiStreamReader = null; }
         aiIsGenerating = false;
+        aiDeleting = false;
+        const confirmOverlay = document.getElementById('ai-confirm-overlay');
+        if (confirmOverlay) confirmOverlay.classList.remove('show');
         switchAiView('list');
     });
     document.getElementById('ai-chat-send').addEventListener('click', () => sendAiMessage());
