@@ -22,7 +22,7 @@
     <meta property="og:description" content="和朋友一起养一只虚拟猫咪~">
     <meta property="og:type" content="website">
     <meta property="og:url" content="https://changle.me">
-    <link rel="stylesheet" href="style.css?v=20260213g">
+    <link rel="stylesheet" href="style.css?v=20260213h">
 </head>
 
 <body>
@@ -399,7 +399,7 @@
                 </div>
             </div>
 
-            <!-- ② 会话列表视图（群聊+私聊） -->
+            <!-- ② 会话列表视图 -->
             <div id="ai-view-list" class="ai-view" style="display:none;">
                 <div class="panel-title">
                     <button class="ai-back-btn" id="ai-back-list">←</button>
@@ -409,45 +409,24 @@
                     <div class="ai-session-list" id="ai-session-list"></div>
                 </div>
                 <div class="ai-new-chat-bar">
-                    <button class="ai-new-chat-btn ai-new-private" id="ai-new-private-btn">💬 新建私聊</button>
-                    <button class="ai-new-chat-btn ai-new-group" id="ai-new-group-btn">👥 三人群聊</button>
+                    <button class="ai-new-chat-btn" id="ai-new-chat-btn">💬 新建聊天</button>
                 </div>
             </div>
 
-            <!-- ③ 私聊视图 -->
+            <!-- ③ 聊天视图 -->
             <div id="ai-view-chat" class="ai-view" style="display:none;">
                 <div class="panel-title">
                     <button class="ai-back-btn" id="ai-back-chat">←</button>
-                    <span id="ai-chat-title">Yian喵</span>
+                    <span id="ai-chat-title">和 Yian喵 聊天</span>
                     <button class="ai-chat-clear-btn" id="ai-chat-clear" title="删除此对话">🗑️</button>
                 </div>
                 <div class="panel-body ai-chat-body" id="ai-chat-body">
-                    <div class="ai-chat-loading" id="ai-chat-loading">加载中...</div>
+                    <div class="ai-chat-loading hidden" id="ai-chat-loading">加载中...</div>
                     <div class="ai-chat-messages" id="ai-chat-messages"></div>
                 </div>
-                <div class="panel-input-bar ai-chat-input-bar" id="ai-chat-input-bar">
-                    <input type="text" id="ai-chat-input" class="panel-input" placeholder="跟Yian喵说点什么..." maxlength="200" autocomplete="off">
-                    <button class="panel-send-btn" id="ai-chat-send">发送</button>
-                </div>
-                <div class="ai-readonly-bar" id="ai-readonly-bar" style="display:none;">
-                    <span>🔒 这是对方的私聊，仅可查看</span>
-                </div>
-            </div>
-
-            <!-- ④ 三人群聊视图 -->
-            <div id="ai-view-group" class="ai-view" style="display:none;">
-                <div class="panel-title">
-                    <button class="ai-back-btn" id="ai-back-group">←</button>
-                    <span>三人群聊</span>
-                    <button class="ai-chat-clear-btn" id="ai-group-clear" title="清空群聊记录">🗑️</button>
-                </div>
-                <div class="panel-body ai-chat-body" id="ai-group-body">
-                    <div class="ai-chat-loading hidden" id="ai-group-loading">加载中...</div>
-                    <div class="ai-chat-messages" id="ai-group-messages"></div>
-                </div>
                 <div class="panel-input-bar ai-chat-input-bar">
-                    <input type="text" id="ai-group-input" class="panel-input" placeholder="在群里说点什么..." maxlength="200" autocomplete="off">
-                    <button class="panel-send-btn" id="ai-group-send">发送</button>
+                    <input type="text" id="ai-chat-input" class="panel-input" placeholder="在群里说点什么..." maxlength="200" autocomplete="off">
+                    <button class="panel-send-btn" id="ai-chat-send">发送</button>
                 </div>
             </div>
 
@@ -494,7 +473,7 @@
 
     <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js" defer></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-database-compat.js" defer></script>
-    <script src="script.js?v=20260213g" defer></script>
+    <script src="script.js?v=20260213h" defer></script>
 </body>
 
 </html>

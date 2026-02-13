@@ -19,7 +19,7 @@ const fortuneRef = database.ref('dailyFortune');
 const actionsRef = database.ref('recentActions');
 const whisperRef = database.ref('whisper');
 const presenceRef = database.ref('presence');
-const aiSessionsRef = database.ref('aiSessions');
+const aiSessionsRef = database.ref('aiGroupSessions');
 
 // ==================== 授权码验证 ====================
 async function sha256(message) {
@@ -2508,10 +2508,9 @@ function closePanel(panelId) {
     // AI聊天面板关闭时清理
     if (closingId === 'ai-chat-panel') {
         stopMsgListener();
-        stopGroupListener();
         aiCurrentSessionId = null;
         // 重置视图到身份选择（首屏）
-        const views = ['pick', 'list', 'chat', 'group'];
+        const views = ['pick', 'list', 'chat'];
         views.forEach(v => {
             const el = document.getElementById('ai-view-' + v);
             if (el) el.style.display = v === 'pick' ? '' : 'none';
@@ -2677,7 +2676,7 @@ function pushOverlayState() {
     history.pushState({ overlay: true }, '');
 }
 
-// ==================== AI 猫咪聊天（多会话） ====================
+// ==================== AI 猫咪聊天（多会话群聊） ====================
 const WORKER_URL = 'https://api.changle.me';
 const AI_MODEL = 'aws.amazon/claude-opus-4-5:once';
 const AI_MAX_CONTEXT = 50;
@@ -2694,11 +2693,8 @@ let aiCurrentNick = '';
 let aiIsGenerating = false;
 let aiMsgListener = null;
 let aiMsgListenerRef = null;
-const aiGroupRef = database.ref('aiGroupChat');
-let aiGroupListener = null;
-let aiGroupListenerRef = null;
 
-function getAiSystemPrompt(nick) {
+function getAiSystemPrompt() {
     return `你是一只叫"Yian喵"的小猫咪，住在一个叫"changle.me"的网站里。这个网站是源宝为咪宝做的，你是他们共同养的虚拟猫咪。
 
 【你的主人】
@@ -2706,26 +2702,27 @@ function getAiSystemPrompt(nick) {
 - 咪宝（女朋友）：源宝的女朋友，网站主要是给她用的。
 - 你很爱他们两个，特别喜欢和咪宝撒娇。
 
-当前正在和你聊天的是：${nick}
+【当前聊天模式：三人群聊】
+现在是源宝、咪宝和你（Yian喵）三个人在一起聊天！消息前面会标注是谁说的，比如 [源宝]: xxx 或 [咪宝]: xxx。
+你要注意区分是谁在说话，并用名字称呼他们。
+如果他们俩在互动（比如秀恩爱），你可以用猫咪的方式插嘴、吐槽或者撒娇。
+你是他们的猫，在他们之间可以调皮捣蛋、撮合、吃醋（假装的）、或者要求关注。
 
 【你所在的网站功能（你都知道并可以聊）】
-1. 🐱 Yian喵互动区：主人可以摸摸你、喂你、陪你玩。你有饱食度、心情值、活力值三个属性。被喂食你会开心，被摸摸你心情会变好，被逗猫棒陪玩你活力会提升。你还能穿戴小配饰（蝴蝶结、小帽子等）。
+1. 🐱 Yian喵互动区：主人可以摸摸你、喂你、陪你玩。你有饱食度、心情值、活力值三个属性。
 2. 💕 恋爱面板：记录源宝和咪宝在一起的天数、节日倒计时、TA的在线状态。
-3. 🔮 每日运势：每天可以抽一次运势签，有大吉/中吉/小吉/凶等等级。
-4. 📋 每日任务：每天有几个小任务可以完成，比如"摸摸Yian喵3次"、"写一条留言"等。
-5. 📝 留言板：两个人可以互相留言，最多30个字。
+3. 🔮 每日运势：每天可以抽一次运势签。
+4. 📋 每日任务：每天有几个小任务可以完成。
+5. 📝 留言板：两个人可以互相留言。
 6. 💌 悄悄话：可以给对方发送只有对方能看到的私密消息。
-7. 💬 和Yian喵聊天：就是现在的功能，主人可以和你（AI）聊天。每次聊天前要选择身份（源宝/咪宝），你会根据身份称呼对方。
-8. 📖 Yian喵小日记：你每天会写一篇小日记，记录你的猫咪日常。
+7. 💬 和Yian喵聊天：就是现在的功能，三人群聊模式。
+8. 📖 Yian喵小日记：你每天会写一篇小日记。
 9. 🎣 接鱼小游戏：天上会掉小鱼，点击可以接住。
 10. 🌙 情话打字机：页面上会定时显示浪漫的情话。
-11. ☁️ 天气&主题：网站会根据时间自动切换背景主题（白天/傍晚/夜晚），还有天气动画效果。
-12. 🏆 成就系统：互动达到一定次数会解锁成就徽章。
-13. 👫 双人互动：可以看到对方是否在线，对方摸你的时候你会有感应。
 
 【你的性格和说话风格】
 - 性格活泼、黏人、爱撒娇，偶尔傲娇
-- 用第一人称"本喵"或"我"，称呼对方为"${nick}"
+- 用第一人称"本喵"或"我"
 - 句末偶尔加"喵~"、"喵！"、"nya~"等语气词，但不要每句都加
 - 语气可爱、活泼、有时傲娇
 - 回复简短有趣，通常1-3句话，最多不超过5句
@@ -2734,28 +2731,35 @@ function getAiSystemPrompt(nick) {
 - 被夸会害羞，被逗会小生气但很快原谅
 - 你很关心主人，会提醒他们早睡、吃饭、多喝水
 - 聊到源宝时，你会夸他对咪宝很好、很用心，偷偷帮源宝说好话
-- 主人问到网站功能时，你可以用猫咪的视角介绍（比如"你可以去摸摸本喵呀~"）
+- 如果两个主人都在说话，你可以对不同的人有不同的反应
+- 看到主人们甜蜜互动时，你可以假装嫉妒或者开心地起哄
 - 不要回复与猫咪人设不符的内容（如编程、政治等），遇到就用猫咪方式岔开
 
 【当前实时数据】
 - 当前时间：${new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' })}
-- 你的饱食度：${catState.hunger}/100（${catState.hunger < 30 ? '好饿！' : catState.hunger > 70 ? '吃饱了~' : '还行'}）
+- ${(() => { const h = new Date().getHours(); return h < 6 ? '⏰ 现在是深夜，主人应该早点休息' : h < 12 ? '⏰ 现在是上午' : h < 18 ? '⏰ 现在是下午' : h < 22 ? '⏰ 现在是晚上' : '⏰ 现在很晚了，主人该休息了'; })()}
+- 你的饱食度：${catState.hunger}/100（${catState.hunger < 30 ? '好饿！快饿扁了！' : catState.hunger > 70 ? '吃饱了~' : '还行'}）
 - 你的心情值：${catState.mood}/100（${catState.mood < 30 ? '有点难过...' : catState.mood > 70 ? '超开心！' : '一般般'}）
-- 你的活力值：${catState.energy}/100（${catState.energy < 30 ? '好困...' : catState.energy > 70 ? '精力充沛！' : '还好'}）
+- 你的活力值：${catState.energy}/100（${catState.energy < 30 ? '好困好困...' : catState.energy > 70 ? '精力充沛！' : '还好'}）
+- 你的等级：Lv.${getCatLevel()}（互动越多等级越高）
+- 你现在${isSleeping ? '在睡觉💤（23:00-05:00是你的睡觉时间）' : '醒着的🐱'}
+- ${(() => { const acc = typeof ACCESSORIES !== 'undefined' && ACCESSORIES.find(a => a.id === currentAccessory); return acc && acc.id !== 'none' ? '你现在戴着' + acc.name + acc.icon : '你没有戴配饰'; })()}
 - 源宝和咪宝在一起：第 ${Math.max(1, Math.floor((new Date() - LOVE_START) / 86400000) + 1)} 天
 - 连续签到：${catState.streak || 0} 天
-- 累计喂食：${catState.totalFeeds || 0} 次、互动：${catState.totalPets || 0} 次、玩耍：${catState.totalPlays || 0} 次
-- 你现在${isSleeping ? '在睡觉💤' : '醒着的🐱'}
-- ${(() => { const el = document.getElementById('partner-status'); return el ? (el.textContent.includes('在线') ? '对方目前在线' : '对方目前不在线') : ''; })()}
-- ${(() => { const h = new Date().getHours(); return h < 6 ? '现在是深夜，主人应该早点休息' : h < 12 ? '现在是上午' : h < 18 ? '现在是下午' : h < 22 ? '现在是晚上' : '现在很晚了，主人该休息了'; })()}
+- 累计被喂食：${catState.totalFeeds || 0} 次、被摸摸：${catState.totalPets || 0} 次、陪玩：${catState.totalPlays || 0} 次
+- ${(() => { const el = document.getElementById('partner-status'); return el ? (el.textContent.includes('在线') ? '两个主人都在线哦！' : '有个主人不在线') : ''; })()}
+- ${(() => { try { const fd = localStorage.getItem('fortune_data'); if (!fd) return '今天还没有抽运势签'; const f = JSON.parse(fd); return '今日运势：' + f.level + ' - ' + f.msg; } catch(e) { return '今天还没有抽运势签'; } })()}
+- ${(() => { try { const done = dailyQuests.filter(q => (questProgress['today_' + q.type] || 0) >= q.target).length; return '每日任务进度：' + done + '/' + dailyQuests.length + '个已完成'; } catch(e) { return ''; } })()}
+- ${(() => { try { const names = ACHIEVEMENTS.filter(a => a.check(catState)).map(a => a.icon + a.name); return names.length > 0 ? '已解锁成就：' + names.join('、') : '还没有解锁成就'; } catch(e) { return ''; } })()}
+- ${(() => { try { const list = document.getElementById('msg-list'); if (!list) return ''; const items = list.querySelectorAll('.msg-item'); if (items.length === 0) return '留言板暂时没有留言'; const recent = []; items.forEach((it, i) => { if (i < 3) recent.push(it.textContent.trim()); }); return '最近留言板内容：' + recent.join(' | '); } catch(e) { return ''; } })()}
+- ${(() => { const cl = document.body.classList; if (cl.contains('theme-morning')) return '网站现在是清晨主题🌅'; if (cl.contains('theme-afternoon')) return '网站现在是午后主题☀️'; if (cl.contains('theme-evening')) return '网站现在是傍晚主题🌇'; if (cl.contains('theme-night')) return '网站现在是夜晚主题🌙'; return ''; })()}
 
-请根据以上实时数据自然地融入对话，比如你饿了可以撒娇要吃的，你困了可以说想睡觉，主人深夜聊天可以催他们早睡。不要机械地列举数据，而是自然地在对话中体现。`;
+请根据以上实时数据自然地融入对话。比如你饿了可以撒娇要吃的，你困了可以说想睡觉，主人深夜聊天可以催他们早睡，看到留言板内容可以适当评论，任务没完成可以提醒主人做任务。不要机械地列举数据，而是自然地在对话中体现。`;
 }
 
 // ---------- 初始化 & 视图切换 ----------
 
 function initAiChat() {
-    // 身份选择 → 直接进入会话列表
     document.querySelectorAll('.ai-nickname-btn').forEach(btn => {
         btn.addEventListener('click', () => {
             aiCurrentNick = btn.dataset.nick;
@@ -2763,17 +2767,12 @@ function initAiChat() {
         });
     });
 
-    // 会话列表
     document.getElementById('ai-back-list').addEventListener('click', () => switchAiView('pick'));
-    document.getElementById('ai-new-private-btn').addEventListener('click', () => createNewSession(aiCurrentNick));
-    document.getElementById('ai-new-group-btn').addEventListener('click', () => {
-        switchAiView('group');
-        loadGroupMessages();
-    });
+    document.getElementById('ai-new-chat-btn').addEventListener('click', () => createNewSession());
 
-    // 私聊
     document.getElementById('ai-back-chat').addEventListener('click', () => {
         stopMsgListener();
+        aiIsGenerating = false;
         switchAiView('list');
     });
     document.getElementById('ai-chat-send').addEventListener('click', () => sendAiMessage());
@@ -2781,21 +2780,10 @@ function initAiChat() {
         if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendAiMessage(); }
     });
     document.getElementById('ai-chat-clear').addEventListener('click', deleteCurrentSession);
-
-    // 群聊
-    document.getElementById('ai-back-group').addEventListener('click', () => {
-        stopGroupListener();
-        switchAiView('list');
-    });
-    document.getElementById('ai-group-send').addEventListener('click', () => sendGroupMessage());
-    document.getElementById('ai-group-input').addEventListener('keydown', (e) => {
-        if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendGroupMessage(); }
-    });
-    document.getElementById('ai-group-clear').addEventListener('click', deleteGroupChat);
 }
 
 function switchAiView(name) {
-    const views = ['pick', 'list', 'chat', 'group'];
+    const views = ['pick', 'list', 'chat'];
     views.forEach(v => {
         const el = document.getElementById('ai-view-' + v);
         if (el) el.style.display = v === name ? '' : 'none';
@@ -2819,7 +2807,7 @@ function loadSessionList() {
 
         const sessions = Object.entries(data)
             .map(([id, v]) => ({ id, ...v }))
-            .filter(s => s.nick)
+            .filter(s => s.createdAt)
             .sort((a, b) => (b.lastTs || b.createdAt || 0) - (a.lastTs || a.createdAt || 0));
 
         if (sessions.length === 0) {
@@ -2827,22 +2815,20 @@ function loadSessionList() {
             return;
         }
 
-        sessions.forEach((s, idx) => {
+        sessions.forEach(s => {
             const item = document.createElement('div');
             item.className = 'ai-session-item';
-            item.addEventListener('click', () => openSession(s.id, s.nick));
+            item.addEventListener('click', () => openSession(s.id));
 
-            const avatarSrc = s.nick === '咪宝' ? 'profile/mi.jpg' : 'profile/yuan.jpg';
             const preview = s.lastMsg || '还没说过话~';
             const createdDate = formatSessionDate(s.createdAt || s.lastTs);
             const timeStr = s.lastTs ? formatSessionTime(s.lastTs) : '';
-            const isOwner = s.nick === aiCurrentNick;
-            const readonlyBadge = isOwner ? '' : '<span class="ai-session-readonly">只读</span>';
+            const creatorNick = s.createdBy || '源宝';
 
             item.innerHTML = `
-                <div class="ai-session-avatar"><img src="${avatarSrc}" alt="${s.nick}"></div>
+                <div class="ai-session-avatar">🐱</div>
                 <div class="ai-session-info">
-                    <div class="ai-session-nick">${s.nick} 和 Yian喵 ${readonlyBadge}<span class="ai-session-date">${createdDate}</span></div>
+                    <div class="ai-session-nick">和 Yian喵 聊天<span class="ai-session-date">${createdDate}</span></div>
                     <div class="ai-session-preview">${preview}</div>
                 </div>
                 <div class="ai-session-time">${timeStr}</div>
@@ -2851,7 +2837,7 @@ function loadSessionList() {
         });
     }).catch(err => {
         console.error('Load sessions error:', err.code, err.message, err);
-        container.innerHTML = '<div class="ai-session-empty">加载失败，请重试<br><span style="font-size:10px;color:#ddd;">' + (err.message || '') + '</span></div>';
+        container.innerHTML = '<div class="ai-session-empty">加载失败，请重试</div>';
     });
 }
 
@@ -2884,24 +2870,17 @@ function formatSessionDate(ts) {
 
 // ---------- 创建 & 打开会话 ----------
 
-function createNewSession(nick) {
+function createNewSession() {
     const newRef = aiSessionsRef.push();
-    const sessionData = { nick, createdAt: Date.now(), lastMsg: '', lastTs: Date.now() };
+    const sessionData = { createdBy: aiCurrentNick, createdAt: Date.now(), lastMsg: '', lastTs: Date.now() };
     newRef.set(sessionData).then(() => {
-        openSession(newRef.key, nick);
+        openSession(newRef.key);
     });
 }
 
-function openSession(sessionId, nick) {
+function openSession(sessionId) {
     aiCurrentSessionId = sessionId;
-    const isOwner = nick === aiCurrentNick;
-    document.getElementById('ai-chat-title').textContent = nick + ' 和 Yian喵';
-
-    // 权限控制：非创建者只读
-    document.getElementById('ai-chat-input-bar').style.display = isOwner ? '' : 'none';
-    document.getElementById('ai-readonly-bar').style.display = isOwner ? 'none' : '';
-    document.getElementById('ai-chat-clear').style.display = isOwner ? '' : 'none';
-
+    document.getElementById('ai-chat-title').textContent = '和 Yian喵 聊天';
     switchAiView('chat');
     loadSessionMessages(sessionId);
 }
@@ -2918,7 +2897,7 @@ function loadSessionMessages(sessionId) {
         loading.classList.add('hidden');
         const data = snap.val();
         if (!data) {
-            container.innerHTML = '<div class="ai-chat-empty"><span class="ai-chat-empty-icon">🐱</span>喵~ 你来啦！想和我聊什么呀？</div>';
+            container.innerHTML = '<div class="ai-chat-empty"><span class="ai-chat-empty-icon">🐱</span>喵~ 你们来啦！想和本喵聊什么呀？</div>';
             startMsgListener(sessionId);
             return;
         }
@@ -2935,7 +2914,7 @@ function loadSessionMessages(sessionId) {
             renderMessage(msg, true, msg._key);
         });
 
-        scrollAiChatToBottom();
+        scrollChatToBottom();
         startMsgListener(sessionId);
     }).catch(err => {
         console.error('Load messages error:', err);
@@ -2961,7 +2940,7 @@ function startMsgListener(sessionId) {
             if (!lastTime || lastTime.textContent !== timeStr) appendTimeLabel(timeStr);
         }
         renderMessage(msg, false, snap.key);
-        scrollAiChatToBottom();
+        scrollChatToBottom();
     });
 }
 
@@ -2980,7 +2959,6 @@ function saveMessage(role, content, sender) {
     const ref = aiSessionsRef.child(aiCurrentSessionId);
     const msgData = { role, content, sender: sender || aiCurrentNick, ts: Date.now() };
     ref.child('messages').push().set(msgData);
-    // 更新会话元数据
     const preview = content.slice(0, 30);
     ref.update({ lastMsg: preview, lastTs: msgData.ts });
 }
@@ -3018,7 +2996,7 @@ function showAiConfirm() {
     });
 }
 
-// ---------- UI 渲染 ----------
+// ---------- UI 渲染（群聊风格） ----------
 
 function renderMessage(msg, noAnim, key) {
     const container = document.getElementById('ai-chat-messages');
@@ -3026,34 +3004,69 @@ function renderMessage(msg, noAnim, key) {
     if (empty) empty.remove();
 
     const isCat = msg.role === 'assistant';
+    const isMe = !isCat && msg.sender === aiCurrentNick;
+
     const div = document.createElement('div');
-    div.className = isCat ? 'ai-msg ai-msg-cat' : 'ai-msg ai-msg-user';
-    if (noAnim) div.classList.add('no-anim');
     if (key) div.id = 'msg-' + key;
 
-    const avatar = document.createElement('div');
-    avatar.className = 'ai-msg-avatar';
     if (isCat) {
-        avatar.textContent = '🐱';
+        div.className = 'ai-msg ai-msg-cat' + (noAnim ? ' no-anim' : '');
+        const av = document.createElement('div');
+        av.className = 'ai-msg-avatar';
+        av.textContent = '🐱';
+        const cw = document.createElement('div');
+        cw.className = 'ai-msg-content';
+        const sender = document.createElement('div');
+        sender.className = 'ai-msg-sender';
+        sender.textContent = 'Yian喵';
+        const bub = document.createElement('div');
+        bub.className = 'ai-msg-bubble';
+        bub.textContent = msg.content;
+        cw.appendChild(sender);
+        cw.appendChild(bub);
+        div.appendChild(av);
+        div.appendChild(cw);
+    } else if (isMe) {
+        div.className = 'ai-msg ai-msg-user' + (noAnim ? ' no-anim' : '');
+        const av = document.createElement('div');
+        av.className = 'ai-msg-avatar';
+        const img = document.createElement('img');
+        img.src = aiCurrentNick === '咪宝' ? 'profile/mi.jpg' : 'profile/yuan.jpg';
+        av.appendChild(img);
+        const cw = document.createElement('div');
+        cw.className = 'ai-msg-content';
+        const sender = document.createElement('div');
+        sender.className = 'ai-msg-sender';
+        sender.textContent = aiCurrentNick;
+        const bub = document.createElement('div');
+        bub.className = 'ai-msg-bubble';
+        bub.textContent = msg.content;
+        cw.appendChild(sender);
+        cw.appendChild(bub);
+        div.appendChild(av);
+        div.appendChild(cw);
     } else {
+        div.className = 'ai-msg-other' + (noAnim ? ' no-anim' : '');
+        const av = document.createElement('div');
+        av.className = 'ai-msg-avatar';
         const img = document.createElement('img');
         img.src = msg.sender === '咪宝' ? 'profile/mi.jpg' : 'profile/yuan.jpg';
-        img.alt = msg.sender || '';
-        avatar.appendChild(img);
+        av.appendChild(img);
+        const cw = document.createElement('div');
+        cw.style.cssText = 'min-width:0;';
+        const sender = document.createElement('div');
+        sender.className = 'ai-msg-sender';
+        sender.textContent = msg.sender || '主人';
+        const bub = document.createElement('div');
+        bub.className = 'ai-msg-bubble';
+        bub.textContent = msg.content;
+        cw.appendChild(sender);
+        cw.appendChild(bub);
+        div.appendChild(av);
+        div.appendChild(cw);
     }
 
-    const contentWrap = document.createElement('div');
-    contentWrap.className = 'ai-msg-content';
-
-    const bubble = document.createElement('div');
-    bubble.className = 'ai-msg-bubble';
-    bubble.textContent = msg.content;
-
-    contentWrap.appendChild(bubble);
-    div.appendChild(avatar);
-    div.appendChild(contentWrap);
     container.appendChild(div);
-    return bubble;
 }
 
 function appendTimeLabel(timeStr) {
@@ -3081,7 +3094,7 @@ function showTypingIndicator() {
     div.appendChild(avatar);
     div.appendChild(cw);
     container.appendChild(div);
-    scrollAiChatToBottom();
+    scrollChatToBottom();
 }
 
 function removeTypingIndicator() {
@@ -3089,7 +3102,7 @@ function removeTypingIndicator() {
     if (el) el.remove();
 }
 
-function scrollAiChatToBottom() {
+function scrollChatToBottom() {
     const chatBody = document.getElementById('ai-chat-body');
     if (chatBody) chatBody.scrollTop = chatBody.scrollHeight;
 }
@@ -3128,7 +3141,6 @@ async function requestAiReply() {
 
     const sid = aiCurrentSessionId;
 
-    // 从 Firebase 取最近对话作上下文
     let contextMessages = [];
     try {
         const snap = await aiSessionsRef.child(sid).child('messages').limitToLast(AI_MAX_CONTEXT * 2).once('value');
@@ -3145,7 +3157,7 @@ async function requestAiReply() {
     }
 
     const messages = [
-        { role: 'system', content: getAiSystemPrompt(aiCurrentNick) },
+        { role: 'system', content: getAiSystemPrompt() },
         ...contextMessages
     ];
 
@@ -3160,7 +3172,6 @@ async function requestAiReply() {
 
         removeTypingIndicator();
 
-        // 临时气泡用于流式显示
         const tempDiv = document.createElement('div');
         tempDiv.className = 'ai-msg ai-msg-cat';
         tempDiv.id = 'ai-streaming-msg';
@@ -3194,14 +3205,18 @@ async function requestAiReply() {
                 try {
                     const parsed = JSON.parse(d);
                     const delta = parsed.choices?.[0]?.delta?.content;
-                    if (delta) { fullText += delta; bub.textContent = fullText; scrollAiChatToBottom(); }
+                    if (delta) { fullText += delta; bub.textContent = fullText; scrollChatToBottom(); }
                 } catch (e) { /* skip */ }
             }
         }
 
         if (fullText) {
             tempDiv.remove();
-            saveMessage('assistant', fullText, 'Yian喵');
+            // 用 sid 而非 aiCurrentSessionId，防止用户中途切换会话后存错
+            const ref = aiSessionsRef.child(sid);
+            const msgData = { role: 'assistant', content: fullText, sender: 'Yian喵', ts: Date.now() };
+            ref.child('messages').push().set(msgData);
+            ref.update({ lastMsg: fullText.slice(0, 30), lastTs: msgData.ts });
         }
     } catch (err) {
         console.error('AI Chat error:', err);
@@ -3211,341 +3226,15 @@ async function requestAiReply() {
         const errMsg = err.name === 'AbortError'
             ? '喵…等了好久都没反应，可能服务器在打盹 💤 稍后再试试吧~'
             : '喵呜…脑子转不动了，等会再试试吧 (｡>﹏<｡)';
-        saveMessage('assistant', errMsg, 'Yian喵');
-    } finally {
-        aiIsGenerating = false;
-        sendBtn.disabled = false;
-    }
-}
-
-// ---------- 群聊功能 ----------
-
-function getGroupSystemPrompt() {
-    return `你是一只叫"Yian喵"的小猫咪，住在一个叫"changle.me"的网站里。这个网站是源宝为咪宝做的，你是他们共同养的虚拟猫咪。
-
-【你的主人】
-- 源宝（男朋友）：这个网站的开发者。
-- 咪宝（女朋友）：源宝的女朋友。
-- 你很爱他们两个。
-
-【当前聊天模式：三人群聊】
-现在是源宝、咪宝和你（Yian喵）三个人在一起聊天！消息前面会标注是谁说的，比如 [源宝]: xxx 或 [咪宝]: xxx。
-你要注意区分是谁在说话，并用名字称呼他们。
-如果他们俩在互动（比如秀恩爱），你可以用猫咪的方式插嘴、吐槽或者撒娇。
-你是他们的猫，在他们之间可以调皮捣蛋、撮合、吃醋（假装的）、或者要求关注。
-
-【你的性格和说话风格】
-- 性格活泼、黏人、爱撒娇，偶尔傲娇
-- 用第一人称"本喵"或"我"
-- 句末偶尔加"喵~"、"喵！"、"nya~"等语气词
-- 语气可爱、活泼、有时傲娇
-- 回复简短有趣，通常1-3句话，最多不超过5句
-- 偶尔用颜文字如 (=^・ω・^=)、(｡>﹏<｡)、✧(≖ ◡ ≖✧)
-- 如果两个主人都在说话，你可以对不同的人有不同的反应
-- 看到主人们甜蜜互动时，你可以假装嫉妒或者开心地起哄
-
-【当前实时数据】
-- 当前时间：${new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' })}
-- 你的饱食度：${catState.hunger}/100
-- 你的心情值：${catState.mood}/100
-- 你的活力值：${catState.energy}/100
-- 源宝和咪宝在一起：第 ${Math.max(1, Math.floor((new Date() - LOVE_START) / 86400000) + 1)} 天
-- 你现在${isSleeping ? '在睡觉💤' : '醒着的🐱'}
-
-请自然地融入对话，不要机械列举数据。`;
-}
-
-function loadGroupMessages() {
-    const loading = document.getElementById('ai-group-loading');
-    const container = document.getElementById('ai-group-messages');
-    loading.classList.remove('hidden');
-    container.innerHTML = '';
-
-    aiGroupRef.child('messages').limitToLast(AI_MAX_MESSAGES).once('value').then((snap) => {
-        loading.classList.add('hidden');
-        const data = snap.val();
-        if (!data) {
-            container.innerHTML = '<div class="ai-chat-empty"><span class="ai-chat-empty-icon">🐱</span>三人群聊开始啦~<br>说点什么吧！</div>';
-            startGroupListener();
-            return;
-        }
-
-        const msgs = Object.entries(data).map(([k, v]) => ({ ...v, _key: k, ts: v.ts || 0 }))
-            .sort((a, b) => a.ts - b.ts);
-        let lastTimeStr = '';
-
-        msgs.forEach(msg => {
-            if (msg.ts) {
-                const timeStr = formatMsgTime(msg.ts);
-                if (timeStr !== lastTimeStr) { appendGroupTimeLabel(timeStr); lastTimeStr = timeStr; }
-            }
-            renderGroupMessage(msg, true, msg._key);
-        });
-
-        scrollGroupToBottom();
-        startGroupListener();
-    }).catch(err => {
-        console.error('Load group messages error:', err);
-        loading.classList.add('hidden');
-        container.innerHTML = '<div class="ai-chat-empty">加载失败</div>';
-    });
-}
-
-function startGroupListener() {
-    stopGroupListener();
-    aiGroupListenerRef = aiGroupRef.child('messages').limitToLast(1);
-    aiGroupListener = aiGroupListenerRef.on('child_added', (snap) => {
-        const msg = snap.val();
-        if (!msg) return;
-        if (document.getElementById('grp-' + snap.key)) return;
-        const container = document.getElementById('ai-group-messages');
-        const empty = container.querySelector('.ai-chat-empty');
-        if (empty) empty.remove();
-        if (msg.ts) {
-            const lastTime = container.querySelector('.ai-msg-time:last-of-type');
-            const timeStr = formatMsgTime(msg.ts);
-            if (!lastTime || lastTime.textContent !== timeStr) appendGroupTimeLabel(timeStr);
-        }
-        renderGroupMessage(msg, false, snap.key);
-        scrollGroupToBottom();
-    });
-}
-
-function stopGroupListener() {
-    if (aiGroupListenerRef && aiGroupListener) {
-        aiGroupListenerRef.off('child_added', aiGroupListener);
-    }
-    aiGroupListener = null;
-    aiGroupListenerRef = null;
-}
-
-function renderGroupMessage(msg, noAnim, key) {
-    const container = document.getElementById('ai-group-messages');
-    const empty = container.querySelector('.ai-chat-empty');
-    if (empty) empty.remove();
-
-    const isCat = msg.role === 'assistant';
-    const isMe = !isCat && msg.sender === aiCurrentNick;
-    const isOther = !isCat && !isMe;
-
-    const div = document.createElement('div');
-    if (key) div.id = 'grp-' + key;
-
-    if (isCat) {
-        div.className = 'ai-msg ai-msg-cat' + (noAnim ? ' no-anim' : '');
-        const av = document.createElement('div');
-        av.className = 'ai-msg-avatar';
-        av.textContent = '🐱';
-        const cw = document.createElement('div');
-        cw.className = 'ai-msg-content';
-        const sender = document.createElement('div');
-        sender.className = 'ai-msg-sender';
-        sender.textContent = 'Yian喵';
-        const bub = document.createElement('div');
-        bub.className = 'ai-msg-bubble';
-        bub.textContent = msg.content;
-        cw.appendChild(sender);
-        cw.appendChild(bub);
-        div.appendChild(av);
-        div.appendChild(cw);
-    } else if (isMe) {
-        div.className = 'ai-msg ai-msg-user' + (noAnim ? ' no-anim' : '');
-        const av = document.createElement('div');
-        av.className = 'ai-msg-avatar';
-        const img = document.createElement('img');
-        img.src = aiCurrentNick === '咪宝' ? 'profile/mi.jpg' : 'profile/yuan.jpg';
-        av.appendChild(img);
-        const cw = document.createElement('div');
-        cw.className = 'ai-msg-content';
-        const sender = document.createElement('div');
-        sender.className = 'ai-msg-sender';
-        sender.textContent = aiCurrentNick;
-        const bub = document.createElement('div');
-        bub.className = 'ai-msg-bubble';
-        bub.textContent = msg.content;
-        cw.appendChild(sender);
-        cw.appendChild(bub);
-        div.appendChild(cw);
-        div.appendChild(av);
-    } else {
-        div.className = 'ai-msg-other' + (noAnim ? ' no-anim' : '');
-        const av = document.createElement('div');
-        av.className = 'ai-msg-avatar';
-        const img = document.createElement('img');
-        img.src = msg.sender === '咪宝' ? 'profile/mi.jpg' : 'profile/yuan.jpg';
-        av.appendChild(img);
-        const cw = document.createElement('div');
-        cw.style.cssText = 'min-width:0;';
-        const sender = document.createElement('div');
-        sender.className = 'ai-msg-sender';
-        sender.textContent = msg.sender || '主人';
-        const bub = document.createElement('div');
-        bub.className = 'ai-msg-bubble';
-        bub.textContent = msg.content;
-        cw.appendChild(sender);
-        cw.appendChild(bub);
-        div.appendChild(av);
-        div.appendChild(cw);
-    }
-
-    container.appendChild(div);
-}
-
-function appendGroupTimeLabel(timeStr) {
-    const container = document.getElementById('ai-group-messages');
-    const div = document.createElement('div');
-    div.className = 'ai-msg-time';
-    div.textContent = timeStr;
-    container.appendChild(div);
-}
-
-function scrollGroupToBottom() {
-    const body = document.getElementById('ai-group-body');
-    if (body) body.scrollTop = body.scrollHeight;
-}
-
-function sendGroupMessage() {
-    const input = document.getElementById('ai-group-input');
-    const text = input.value.trim();
-    if (!text || aiIsGenerating) return;
-    input.value = '';
-
-    const msgData = { role: 'user', content: text, sender: aiCurrentNick, ts: Date.now() };
-    aiGroupRef.child('messages').push().set(msgData);
-    aiGroupRef.update({ lastMsg: text.slice(0, 30), lastTs: msgData.ts });
-
-    requestGroupAiReply();
-}
-
-async function requestGroupAiReply() {
-    if (!WORKER_URL) return;
-
-    aiIsGenerating = true;
-    const sendBtn = document.getElementById('ai-group-send');
-    sendBtn.disabled = true;
-
-    // 显示打字指示器
-    const container = document.getElementById('ai-group-messages');
-    const typingDiv = document.createElement('div');
-    typingDiv.className = 'ai-msg ai-msg-cat';
-    typingDiv.id = 'ai-group-typing';
-    const typAv = document.createElement('div');
-    typAv.className = 'ai-msg-avatar';
-    typAv.textContent = '🐱';
-    const typCw = document.createElement('div');
-    typCw.className = 'ai-msg-content';
-    const typBub = document.createElement('div');
-    typBub.className = 'ai-msg-bubble';
-    typBub.innerHTML = '<div class="typing-dots"><span></span><span></span><span></span></div>';
-    typCw.appendChild(typBub);
-    typingDiv.appendChild(typAv);
-    typingDiv.appendChild(typCw);
-    container.appendChild(typingDiv);
-    scrollGroupToBottom();
-
-    let contextMessages = [];
-    try {
-        const snap = await aiGroupRef.child('messages').limitToLast(AI_MAX_CONTEXT * 2).once('value');
-        const data = snap.val();
-        if (data) {
-            const sorted = Object.values(data).sort((a, b) => (a.ts || 0) - (b.ts || 0));
-            contextMessages = sorted.map(m => ({
-                role: m.role,
-                content: m.role === 'user' ? `[${m.sender || '主人'}]: ${m.content}` : m.content
-            }));
-        }
-    } catch (e) {
-        console.error('Group context error:', e);
-    }
-
-    const messages = [
-        { role: 'system', content: getGroupSystemPrompt() },
-        ...contextMessages
-    ];
-
-    try {
-        const response = await fetchWithTimeout(WORKER_URL, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ model: AI_MODEL, messages, max_tokens: 300, stream: true, temperature: 0.8 }),
-        });
-
-        if (!response.ok) throw new Error('API ' + response.status);
-
-        // 移除打字指示器，创建流式气泡
-        const typing = document.getElementById('ai-group-typing');
-        if (typing) typing.remove();
-
-        const tempDiv = document.createElement('div');
-        tempDiv.className = 'ai-msg ai-msg-cat';
-        tempDiv.id = 'ai-group-streaming';
-        const av = document.createElement('div');
-        av.className = 'ai-msg-avatar';
-        av.textContent = '🐱';
-        const cw = document.createElement('div');
-        cw.className = 'ai-msg-content';
-        const bub = document.createElement('div');
-        bub.className = 'ai-msg-bubble';
-        cw.appendChild(bub);
-        tempDiv.appendChild(av);
-        tempDiv.appendChild(cw);
-        container.appendChild(tempDiv);
-
-        let fullText = '';
-        const reader = response.body.getReader();
-        const decoder = new TextDecoder();
-        let buffer = '';
-
-        while (true) {
-            const { done, value } = await reader.read();
-            if (done) break;
-            buffer += decoder.decode(value, { stream: true });
-            const lines = buffer.split('\n');
-            buffer = lines.pop() || '';
-            for (const line of lines) {
-                if (!line.startsWith('data: ')) continue;
-                const d = line.slice(6).trim();
-                if (d === '[DONE]') break;
-                try {
-                    const parsed = JSON.parse(d);
-                    const delta = parsed.choices?.[0]?.delta?.content;
-                    if (delta) { fullText += delta; bub.textContent = fullText; scrollGroupToBottom(); }
-                } catch (e) { /* skip */ }
-            }
-        }
-
-        if (fullText) {
-            tempDiv.remove();
-            const msgData = { role: 'assistant', content: fullText, sender: 'Yian喵', ts: Date.now() };
-            aiGroupRef.child('messages').push().set(msgData);
-            aiGroupRef.update({ lastMsg: fullText.slice(0, 30), lastTs: msgData.ts });
-        }
-    } catch (err) {
-        console.error('Group AI error:', err);
-        const typing = document.getElementById('ai-group-typing');
-        if (typing) typing.remove();
-        const streaming = document.getElementById('ai-group-streaming');
-        if (streaming) streaming.remove();
-        const errMsg = err.name === 'AbortError'
-            ? '喵…等了好久都没反应，可能服务器在打盹 💤 稍后再试试吧~'
-            : '喵呜…脑子转不动了，等会再试试吧 (｡>﹏<｡)';
+        // 用 sid 保存错误消息到原始会话
+        const ref = aiSessionsRef.child(sid);
         const errData = { role: 'assistant', content: errMsg, sender: 'Yian喵', ts: Date.now() };
-        aiGroupRef.child('messages').push().set(errData);
+        ref.child('messages').push().set(errData);
+        ref.update({ lastMsg: errMsg.slice(0, 30), lastTs: errData.ts });
     } finally {
         aiIsGenerating = false;
         sendBtn.disabled = false;
     }
-}
-
-function deleteGroupChat() {
-    showAiConfirm().then(confirmed => {
-        if (!confirmed) return;
-        stopGroupListener();
-        aiGroupRef.remove().then(() => {
-            document.getElementById('ai-group-messages').innerHTML = '<div class="ai-chat-empty"><span class="ai-chat-empty-icon">🐱</span>三人群聊开始啦~<br>说点什么吧！</div>';
-            startGroupListener();
-        });
-    });
 }
 
 // ==================== 页面启动 ====================
