@@ -2793,11 +2793,6 @@ h1 {
     background: #f0f0f0;
     color: #333;
     border-radius: 2px 16px 16px 16px;
-    padding: 8px 12px;
-    font-size: 13.5px;
-    line-height: 1.5;
-    max-width: 75%;
-    word-break: break-word;
 }
 
 /* 悄悄话弹窗（收到时） */
