@@ -1066,37 +1066,27 @@ function updateStreak() {
     const today = getLocalDateStr(new Date());
     const yd = new Date(); yd.setDate(yd.getDate() - 1);
     const yesterday = getLocalDateStr(yd);
-    
-    catRef.transaction((current) => {
-        if (!current) return;
-        const currentLastVisit = current.lastVisitDate || '';
-        
-        if (currentLastVisit === today) {
-            // 今天已经访问过，不更新
-            return;
-        }
-        
-        const newState = { ...current };
+
+    catRef.once('value').then((snap) => {
+        const data = snap.val();
+        if (!data) return;
+
+        const currentLastVisit = data.lastVisitDate || '';
+        if (currentLastVisit === today) return;
+
+        let newStreak;
         if (currentLastVisit === yesterday) {
-            newState.streak = (current.streak || 0) + 1;
+            newStreak = (data.streak || 0) + 1;
         } else {
-            newState.streak = 1;
+            newStreak = 1;
         }
-        newState.lastVisitDate = today;
-        return newState;
-    }, (error, committed, snapshot) => {
-        if (error) {
-            console.error('Streak transaction error:', error);
-            return;
-        }
-        if (committed && snapshot) {
-            const data = snapshot.val();
-            if (data) {
-                catState.streak = data.streak || 0;
-                catState.lastVisitDate = data.lastVisitDate || '';
-                updateDisplay();
-            }
-        }
+
+        catRef.update({ streak: newStreak, lastVisitDate: today });
+        catState.streak = newStreak;
+        catState.lastVisitDate = today;
+        updateDisplay();
+    }).catch((err) => {
+        console.error('Streak update error:', err);
     });
 }
 
@@ -1598,9 +1588,7 @@ function saveCatState() {
         hunger: catState.hunger,
         mood: catState.mood,
         energy: catState.energy,
-        lastUpdate: firebase.database.ServerValue.TIMESTAMP,
-        streak: catState.streak || 0,
-        lastVisitDate: catState.lastVisitDate || ''
+        lastUpdate: firebase.database.ServerValue.TIMESTAMP
     });
     saveToLocalStorage();
 }
