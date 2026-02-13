@@ -1011,7 +1011,7 @@ h1 {
     animation: none;
 }
 
-.cat-static.sleeping .cat-wrapper {
+.cat-wrapper:has(.sleeping) {
     animation: catSleep 4s ease-in-out infinite;
 }
 
