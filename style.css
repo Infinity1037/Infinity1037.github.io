@@ -1130,23 +1130,6 @@ h1 {
     overflow: hidden;
 }
 
-.stat-fill::after {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: -60%;
-    width: 40%;
-    height: 100%;
-    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.35), transparent);
-    animation: barShine 2.5s ease-in-out infinite;
-}
-
-@keyframes barShine {
-    0% { left: -60%; }
-    60% { left: 120%; }
-    100% { left: 120%; }
-}
-
 .stat-fill.hunger {
     background: linear-gradient(90deg, #FFB75E, #ED8F03);
     box-shadow: 0 0 8px rgba(237, 143, 3, 0.3);
@@ -2449,18 +2432,6 @@ h1 {
     padding: 6px 0 2px;
 }
 
-/* 发送者标签 */
-.ai-msg-sender {
-    font-size: 10px;
-    color: #999;
-    margin-bottom: 2px;
-    padding: 0 4px;
-}
-
-.ai-msg-user .ai-msg-sender {
-    text-align: right;
-}
-
 .ai-msg {
     display: flex;
     gap: 8px;
@@ -3190,16 +3161,6 @@ body.theme-night {
     transform: translateZ(0);
 }
 
-/* 减少动画在低电量模式下的消耗 */
-@media (prefers-reduced-motion: reduce) {
-    *,
-    *::before,
-    *::after {
-        animation-duration: 0.01ms !important;
-        transition-duration: 0.01ms !important;
-    }
-}
-
 /* 横屏优化 */
 @media (max-height: 500px) and (orientation: landscape) {
     .cat-static { width: 50px; }
@@ -3281,11 +3242,6 @@ body.theme-night {
     height: 100%;
     background: linear-gradient(90deg, transparent, rgba(255,255,255,0.25), transparent);
     animation: shimmer 3s ease-in-out infinite;
-}
-
-.stat-fill {
-    position: relative;
-    overflow: hidden;
 }
 
 @keyframes shimmer {
