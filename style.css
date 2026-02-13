@@ -2320,6 +2320,13 @@ h1 {
     margin-bottom: 8px;
 }
 
+.ai-session-empty-icon img {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
 /* 新建聊天按钮 */
 
 .ai-new-chat-btn {
@@ -2579,6 +2586,13 @@ h1 {
     margin-bottom: 8px;
 }
 
+.ai-chat-empty .ai-chat-empty-icon img {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
 /* AI 删除确认弹窗 */
 .ai-confirm-overlay {
     position: fixed;
@@ -2758,11 +2772,7 @@ h1 {
 
 /* 群聊中其他用户消息（左侧显示） */
 .ai-msg-other {
-    display: flex;
-    align-items: flex-start;
-    gap: 8px;
-    margin-bottom: 8px;
-    animation: msgIn 0.3s ease;
+    align-self: flex-start;
 }
 
 .ai-msg-other .ai-msg-avatar {

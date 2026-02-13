@@ -20,6 +20,7 @@ const actionsRef = database.ref('recentActions');
 const whisperRef = database.ref('whisper');
 const presenceRef = database.ref('presence');
 const aiSessionsRef = database.ref('aiGroupSessions');
+const aiMessagesRef = database.ref('aiGroupMessages');
 
 // ==================== 授权码验证 ====================
 async function sha256(message) {
@@ -2508,7 +2509,9 @@ function closePanel(panelId) {
     // AI聊天面板关闭时清理
     if (closingId === 'ai-chat-panel') {
         stopMsgListener();
+        if (aiStreamReader) { try { aiStreamReader.cancel(); } catch(e){} aiStreamReader = null; }
         aiCurrentSessionId = null;
+        aiIsGenerating = false;
         // 重置视图到身份选择（首屏）
         const views = ['pick', 'list', 'chat'];
         views.forEach(v => {
@@ -2680,7 +2683,7 @@ function pushOverlayState() {
 const WORKER_URL = 'https://api.changle.me';
 const AI_MODEL = 'aws.amazon/claude-opus-4-5:once';
 const AI_MAX_CONTEXT = 50;
-const AI_MAX_MESSAGES = 100;
+const AI_PAGE_SIZE = 20;
 const AI_TIMEOUT = 30000;
 
 function fetchWithTimeout(url, options, timeout = AI_TIMEOUT) {
@@ -2691,8 +2694,15 @@ function fetchWithTimeout(url, options, timeout = AI_TIMEOUT) {
 let aiCurrentSessionId = null;
 let aiCurrentNick = '';
 let aiIsGenerating = false;
+let aiRequestId = 0;
 let aiMsgListener = null;
 let aiMsgListenerRef = null;
+const aiDeletedSessions = new Set();
+let aiLoadMsgId = 0;
+let aiStreamReader = null;
+let aiOldestMsgKey = null;
+let aiHasMoreMessages = false;
+let aiLoadingMore = false;
 
 function getAiSystemPrompt() {
     return `你是一只叫"Yian喵"的小猫咪，住在一个叫"changle.me"的网站里。这个网站是源宝为咪宝做的，你是他们共同养的虚拟猫咪。
@@ -2772,6 +2782,7 @@ function initAiChat() {
 
     document.getElementById('ai-back-chat').addEventListener('click', () => {
         stopMsgListener();
+        if (aiStreamReader) { try { aiStreamReader.cancel(); } catch(e){} aiStreamReader = null; }
         aiIsGenerating = false;
         switchAiView('list');
     });
@@ -2801,7 +2812,7 @@ function loadSessionList() {
         container.innerHTML = '';
         const data = snap.val();
         if (!data) {
-            container.innerHTML = '<div class="ai-session-empty"><span class="ai-session-empty-icon">🐱</span>还没有聊天记录~<br>点下方按钮开始吧！</div>';
+            container.innerHTML = '<div class="ai-session-empty"><span class="ai-session-empty-icon"><img src="profile/Yian.jpg" alt="Yian喵"></span>还没有聊天记录~<br>点下方按钮开始吧！</div>';
             return;
         }
 
@@ -2811,7 +2822,7 @@ function loadSessionList() {
             .sort((a, b) => (b.lastTs || b.createdAt || 0) - (a.lastTs || a.createdAt || 0));
 
         if (sessions.length === 0) {
-            container.innerHTML = '<div class="ai-session-empty"><span class="ai-session-empty-icon">🐱</span>还没有聊天记录~<br>点下方按钮开始吧！</div>';
+            container.innerHTML = '<div class="ai-session-empty"><span class="ai-session-empty-icon"><img src="profile/Yian.jpg" alt="Yian喵"></span>还没有聊天记录~<br>点下方按钮开始吧！</div>';
             return;
         }
 
@@ -2823,16 +2834,26 @@ function loadSessionList() {
             const preview = s.lastMsg || '还没说过话~';
             const createdDate = formatSessionDate(s.createdAt || s.lastTs);
             const timeStr = s.lastTs ? formatSessionTime(s.lastTs) : '';
-            const creatorNick = s.createdBy || '源宝';
 
-            item.innerHTML = `
-                <div class="ai-session-avatar">🐱</div>
-                <div class="ai-session-info">
-                    <div class="ai-session-nick">和 Yian喵 聊天<span class="ai-session-date">${createdDate}</span></div>
-                    <div class="ai-session-preview">${preview}</div>
-                </div>
-                <div class="ai-session-time">${timeStr}</div>
-            `;
+            const avatarDiv = document.createElement('div');
+            avatarDiv.className = 'ai-session-avatar';
+            avatarDiv.innerHTML = '<img src="profile/Yian.jpg" alt="Yian喵">';
+            const infoDiv = document.createElement('div');
+            infoDiv.className = 'ai-session-info';
+            const nickDiv = document.createElement('div');
+            nickDiv.className = 'ai-session-nick';
+            nickDiv.innerHTML = '和 Yian喵 聊天<span class="ai-session-date">' + createdDate + '</span>';
+            const previewDiv = document.createElement('div');
+            previewDiv.className = 'ai-session-preview';
+            previewDiv.textContent = preview;
+            infoDiv.appendChild(nickDiv);
+            infoDiv.appendChild(previewDiv);
+            const timeDiv = document.createElement('div');
+            timeDiv.className = 'ai-session-time';
+            timeDiv.textContent = timeStr;
+            item.appendChild(avatarDiv);
+            item.appendChild(infoDiv);
+            item.appendChild(timeDiv);
             container.appendChild(item);
         });
     }).catch(err => {
@@ -2870,11 +2891,16 @@ function formatSessionDate(ts) {
 
 // ---------- 创建 & 打开会话 ----------
 
+let aiCreatingSession = false;
 function createNewSession() {
+    if (aiCreatingSession) return;
+    aiCreatingSession = true;
     const newRef = aiSessionsRef.push();
     const sessionData = { createdBy: aiCurrentNick, createdAt: Date.now(), lastMsg: '', lastTs: Date.now() };
     newRef.set(sessionData).then(() => {
         openSession(newRef.key);
+    }).finally(() => {
+        aiCreatingSession = false;
     });
 }
 
@@ -2892,20 +2918,30 @@ function loadSessionMessages(sessionId) {
     const container = document.getElementById('ai-chat-messages');
     loading.classList.remove('hidden');
     container.innerHTML = '';
+    aiOldestMsgKey = null;
+    aiHasMoreMessages = false;
+    const thisLoadId = ++aiLoadMsgId;
 
-    aiSessionsRef.child(sessionId).child('messages').limitToLast(AI_MAX_MESSAGES).once('value').then((snap) => {
+    aiMessagesRef.child(sessionId).limitToLast(AI_PAGE_SIZE + 1).once('value').then((snap) => {
+        if (thisLoadId !== aiLoadMsgId) return;
         loading.classList.add('hidden');
         const data = snap.val();
         if (!data) {
-            container.innerHTML = '<div class="ai-chat-empty"><span class="ai-chat-empty-icon">🐱</span>喵~ 你们来啦！想和本喵聊什么呀？</div>';
+            container.innerHTML = '<div class="ai-chat-empty"><span class="ai-chat-empty-icon"><img src="profile/Yian.jpg" alt="Yian喵"></span>喵~ 你们来啦！想和本喵聊什么呀？</div>';
             startMsgListener(sessionId);
             return;
         }
 
         const msgs = Object.entries(data).map(([k, v]) => ({ ...v, _key: k, ts: v.ts || 0 }))
             .sort((a, b) => a.ts - b.ts);
-        let lastTimeStr = '';
 
+        if (msgs.length > AI_PAGE_SIZE) {
+            aiHasMoreMessages = true;
+            msgs.shift();
+        }
+        aiOldestMsgKey = msgs.length > 0 ? msgs[0]._key : null;
+
+        let lastTimeStr = '';
         msgs.forEach(msg => {
             if (msg.ts) {
                 const timeStr = formatMsgTime(msg.ts);
@@ -2914,18 +2950,113 @@ function loadSessionMessages(sessionId) {
             renderMessage(msg, true, msg._key);
         });
 
-        scrollChatToBottom();
+        scrollChatToBottom(true);
         startMsgListener(sessionId);
+        initScrollLoadMore(sessionId);
     }).catch(err => {
+        if (thisLoadId !== aiLoadMsgId) return;
         console.error('Load messages error:', err);
         loading.classList.add('hidden');
         container.innerHTML = '<div class="ai-chat-empty">加载失败</div>';
     });
 }
 
+function initScrollLoadMore(sessionId) {
+    const chatBody = document.getElementById('ai-chat-body');
+    if (!chatBody) return;
+    chatBody.onscroll = () => {
+        if (chatBody.scrollTop < 60 && aiHasMoreMessages && !aiLoadingMore && aiCurrentSessionId === sessionId) {
+            loadMoreMessages(sessionId);
+        }
+    };
+}
+
+function loadMoreMessages(sessionId) {
+    if (!aiOldestMsgKey || aiLoadingMore) return;
+    aiLoadingMore = true;
+    const chatBody = document.getElementById('ai-chat-body');
+    const container = document.getElementById('ai-chat-messages');
+    const prevHeight = chatBody.scrollHeight;
+
+    aiMessagesRef.child(sessionId).orderByKey().endAt(aiOldestMsgKey).limitToLast(AI_PAGE_SIZE + 1).once('value').then((snap) => {
+        if (aiCurrentSessionId !== sessionId) return;
+        const data = snap.val();
+        if (!data) { aiHasMoreMessages = false; return; }
+
+        const msgs = Object.entries(data)
+            .filter(([k]) => k !== aiOldestMsgKey)
+            .map(([k, v]) => ({ ...v, _key: k, ts: v.ts || 0 }))
+            .sort((a, b) => a.ts - b.ts);
+
+        if (msgs.length < AI_PAGE_SIZE) aiHasMoreMessages = false;
+        if (msgs.length === 0) return;
+
+        aiOldestMsgKey = msgs[0]._key;
+        const frag = document.createDocumentFragment();
+        let lastTimeStr = '';
+        msgs.forEach(msg => {
+            if (msg.ts) {
+                const timeStr = formatMsgTime(msg.ts);
+                if (timeStr !== lastTimeStr) {
+                    const td = document.createElement('div');
+                    td.className = 'ai-msg-time';
+                    td.textContent = timeStr;
+                    frag.appendChild(td);
+                    lastTimeStr = timeStr;
+                }
+            }
+            renderMessageToFragment(frag, msg, msg._key);
+        });
+
+        const firstOldTimeDiv = container.querySelector('.ai-msg-time');
+        if (firstOldTimeDiv && lastTimeStr && firstOldTimeDiv.textContent === lastTimeStr) {
+            firstOldTimeDiv.remove();
+        }
+
+        container.insertBefore(frag, container.firstChild);
+        chatBody.scrollTop = chatBody.scrollHeight - prevHeight;
+    }).finally(() => {
+        aiLoadingMore = false;
+    });
+}
+
+function renderMessageToFragment(frag, msg, key) {
+    const isCat = msg.role === 'assistant';
+    const isMe = !isCat && msg.sender === aiCurrentNick;
+    const div = document.createElement('div');
+    if (key) div.id = 'msg-' + key;
+
+    if (isCat) {
+        div.className = 'ai-msg ai-msg-cat no-anim';
+        const av = document.createElement('div'); av.className = 'ai-msg-avatar';
+        const img = document.createElement('img'); img.src = 'profile/Yian.jpg'; img.alt = 'Yian喵'; av.appendChild(img);
+        const cw = document.createElement('div'); cw.className = 'ai-msg-content';
+        const s = document.createElement('div'); s.className = 'ai-msg-sender'; s.textContent = 'Yian喵';
+        const b = document.createElement('div'); b.className = 'ai-msg-bubble'; b.textContent = msg.content;
+        cw.appendChild(s); cw.appendChild(b); div.appendChild(av); div.appendChild(cw);
+    } else if (isMe) {
+        div.className = 'ai-msg ai-msg-user no-anim';
+        const av = document.createElement('div'); av.className = 'ai-msg-avatar';
+        const img = document.createElement('img'); img.src = aiCurrentNick === '咪宝' ? 'profile/mi.jpg' : 'profile/yuan.jpg'; av.appendChild(img);
+        const cw = document.createElement('div'); cw.className = 'ai-msg-content';
+        const s = document.createElement('div'); s.className = 'ai-msg-sender'; s.textContent = aiCurrentNick;
+        const b = document.createElement('div'); b.className = 'ai-msg-bubble'; b.textContent = msg.content;
+        cw.appendChild(s); cw.appendChild(b); div.appendChild(av); div.appendChild(cw);
+    } else {
+        div.className = 'ai-msg ai-msg-other no-anim';
+        const av = document.createElement('div'); av.className = 'ai-msg-avatar';
+        const img = document.createElement('img'); img.src = msg.sender === '咪宝' ? 'profile/mi.jpg' : 'profile/yuan.jpg'; av.appendChild(img);
+        const cw = document.createElement('div'); cw.className = 'ai-msg-content';
+        const s = document.createElement('div'); s.className = 'ai-msg-sender'; s.textContent = msg.sender || '主人';
+        const b = document.createElement('div'); b.className = 'ai-msg-bubble'; b.textContent = msg.content;
+        cw.appendChild(s); cw.appendChild(b); div.appendChild(av); div.appendChild(cw);
+    }
+    frag.appendChild(div);
+}
+
 function startMsgListener(sessionId) {
     stopMsgListener();
-    aiMsgListenerRef = aiSessionsRef.child(sessionId).child('messages').limitToLast(1);
+    aiMsgListenerRef = aiMessagesRef.child(sessionId).limitToLast(1);
     aiMsgListener = aiMsgListenerRef.on('child_added', (snap) => {
         if (aiCurrentSessionId !== sessionId) return;
         const msg = snap.val();
@@ -2935,7 +3066,8 @@ function startMsgListener(sessionId) {
         const empty = container.querySelector('.ai-chat-empty');
         if (empty) empty.remove();
         if (msg.ts) {
-            const lastTime = container.querySelector('.ai-msg-time:last-of-type');
+            const allTimeDivs = container.querySelectorAll('.ai-msg-time');
+            const lastTime = allTimeDivs.length > 0 ? allTimeDivs[allTimeDivs.length - 1] : null;
             const timeStr = formatMsgTime(msg.ts);
             if (!lastTime || lastTime.textContent !== timeStr) appendTimeLabel(timeStr);
         }
@@ -2956,21 +3088,28 @@ function stopMsgListener() {
 
 function saveMessage(role, content, sender) {
     if (!aiCurrentSessionId) return;
-    const ref = aiSessionsRef.child(aiCurrentSessionId);
     const msgData = { role, content, sender: sender || aiCurrentNick, ts: Date.now() };
-    ref.child('messages').push().set(msgData);
+    aiMessagesRef.child(aiCurrentSessionId).push().set(msgData);
     const preview = content.slice(0, 30);
-    ref.update({ lastMsg: preview, lastTs: msgData.ts });
+    aiSessionsRef.child(aiCurrentSessionId).update({ lastMsg: preview, lastTs: msgData.ts });
 }
 
+let aiDeleting = false;
 function deleteCurrentSession() {
-    if (!aiCurrentSessionId) return;
+    if (!aiCurrentSessionId || aiDeleting) return;
+    aiDeleting = true;
     showAiConfirm().then(confirmed => {
         if (!confirmed) return;
         stopMsgListener();
+        aiDeletedSessions.add(aiCurrentSessionId);
         aiSessionsRef.child(aiCurrentSessionId).remove();
+        aiMessagesRef.child(aiCurrentSessionId).remove();
+        if (aiStreamReader) { try { aiStreamReader.cancel(); } catch(e){} aiStreamReader = null; }
         aiCurrentSessionId = null;
+        aiIsGenerating = false;
         switchAiView('list');
+    }).finally(() => {
+        aiDeleting = false;
     });
 }
 
@@ -3013,7 +3152,10 @@ function renderMessage(msg, noAnim, key) {
         div.className = 'ai-msg ai-msg-cat' + (noAnim ? ' no-anim' : '');
         const av = document.createElement('div');
         av.className = 'ai-msg-avatar';
-        av.textContent = '🐱';
+        const avImg = document.createElement('img');
+        avImg.src = 'profile/Yian.jpg';
+        avImg.alt = 'Yian喵';
+        av.appendChild(avImg);
         const cw = document.createElement('div');
         cw.className = 'ai-msg-content';
         const sender = document.createElement('div');
@@ -3046,14 +3188,14 @@ function renderMessage(msg, noAnim, key) {
         div.appendChild(av);
         div.appendChild(cw);
     } else {
-        div.className = 'ai-msg-other' + (noAnim ? ' no-anim' : '');
+        div.className = 'ai-msg ai-msg-other' + (noAnim ? ' no-anim' : '');
         const av = document.createElement('div');
         av.className = 'ai-msg-avatar';
         const img = document.createElement('img');
         img.src = msg.sender === '咪宝' ? 'profile/mi.jpg' : 'profile/yuan.jpg';
         av.appendChild(img);
         const cw = document.createElement('div');
-        cw.style.cssText = 'min-width:0;';
+        cw.className = 'ai-msg-content';
         const sender = document.createElement('div');
         sender.className = 'ai-msg-sender';
         sender.textContent = msg.sender || '主人';
@@ -3084,7 +3226,10 @@ function showTypingIndicator() {
     div.id = 'ai-typing-indicator';
     const avatar = document.createElement('div');
     avatar.className = 'ai-msg-avatar';
-    avatar.textContent = '🐱';
+    const avatarImg = document.createElement('img');
+    avatarImg.src = 'profile/Yian.jpg';
+    avatarImg.alt = 'Yian喵';
+    avatar.appendChild(avatarImg);
     const cw = document.createElement('div');
     cw.className = 'ai-msg-content';
     const bubble = document.createElement('div');
@@ -3102,9 +3247,13 @@ function removeTypingIndicator() {
     if (el) el.remove();
 }
 
-function scrollChatToBottom() {
+function scrollChatToBottom(force) {
     const chatBody = document.getElementById('ai-chat-body');
-    if (chatBody) chatBody.scrollTop = chatBody.scrollHeight;
+    if (!chatBody) return;
+    if (force) { chatBody.scrollTop = chatBody.scrollHeight; return; }
+    const threshold = 80;
+    const isNearBottom = chatBody.scrollHeight - chatBody.scrollTop - chatBody.clientHeight < threshold;
+    if (isNearBottom) chatBody.scrollTop = chatBody.scrollHeight;
 }
 
 function formatMsgTime(ts) {
@@ -3135,6 +3284,7 @@ async function requestAiReply() {
     if (!WORKER_URL || !aiCurrentSessionId) return;
 
     aiIsGenerating = true;
+    const thisRequestId = ++aiRequestId;
     const sendBtn = document.getElementById('ai-chat-send');
     sendBtn.disabled = true;
     showTypingIndicator();
@@ -3143,7 +3293,7 @@ async function requestAiReply() {
 
     let contextMessages = [];
     try {
-        const snap = await aiSessionsRef.child(sid).child('messages').limitToLast(AI_MAX_CONTEXT * 2).once('value');
+        const snap = await aiMessagesRef.child(sid).limitToLast(AI_MAX_CONTEXT * 2).once('value');
         const data = snap.val();
         if (data) {
             const sorted = Object.values(data).sort((a, b) => (a.ts || 0) - (b.ts || 0));
@@ -3177,7 +3327,10 @@ async function requestAiReply() {
         tempDiv.id = 'ai-streaming-msg';
         const av = document.createElement('div');
         av.className = 'ai-msg-avatar';
-        av.textContent = '🐱';
+        const avImg2 = document.createElement('img');
+        avImg2.src = 'profile/Yian.jpg';
+        avImg2.alt = 'Yian喵';
+        av.appendChild(avImg2);
         const cw = document.createElement('div');
         cw.className = 'ai-msg-content';
         const bub = document.createElement('div');
@@ -3189,9 +3342,15 @@ async function requestAiReply() {
 
         let fullText = '';
         const reader = response.body.getReader();
+        aiStreamReader = reader;
         const decoder = new TextDecoder();
         let buffer = '';
+        let streamDone = false;
+        let scrollTimer = null;
+        const scheduleScroll = () => { if (!scrollTimer) scrollTimer = requestAnimationFrame(() => { scrollChatToBottom(); scrollTimer = null; }); };
 
+        const streamTimeout = setTimeout(() => { try { reader.cancel(); } catch(e){} }, AI_TIMEOUT);
+        try {
         while (true) {
             const { done, value } = await reader.read();
             if (done) break;
@@ -3201,22 +3360,22 @@ async function requestAiReply() {
             for (const line of lines) {
                 if (!line.startsWith('data: ')) continue;
                 const d = line.slice(6).trim();
-                if (d === '[DONE]') break;
+                if (d === '[DONE]') { streamDone = true; break; }
                 try {
                     const parsed = JSON.parse(d);
                     const delta = parsed.choices?.[0]?.delta?.content;
-                    if (delta) { fullText += delta; bub.textContent = fullText; scrollChatToBottom(); }
+                    if (delta) { fullText += delta; bub.textContent = fullText; scheduleScroll(); }
                 } catch (e) { /* skip */ }
             }
+            if (streamDone) break;
         }
+        } finally { clearTimeout(streamTimeout); aiStreamReader = null; }
 
-        if (fullText) {
-            tempDiv.remove();
-            // 用 sid 而非 aiCurrentSessionId，防止用户中途切换会话后存错
-            const ref = aiSessionsRef.child(sid);
+        tempDiv.remove();
+        if (fullText && !aiDeletedSessions.has(sid)) {
             const msgData = { role: 'assistant', content: fullText, sender: 'Yian喵', ts: Date.now() };
-            ref.child('messages').push().set(msgData);
-            ref.update({ lastMsg: fullText.slice(0, 30), lastTs: msgData.ts });
+            aiMessagesRef.child(sid).push().set(msgData);
+            aiSessionsRef.child(sid).update({ lastMsg: fullText.slice(0, 30), lastTs: msgData.ts });
         }
     } catch (err) {
         console.error('AI Chat error:', err);
@@ -3226,14 +3385,17 @@ async function requestAiReply() {
         const errMsg = err.name === 'AbortError'
             ? '喵…等了好久都没反应，可能服务器在打盹 💤 稍后再试试吧~'
             : '喵呜…脑子转不动了，等会再试试吧 (｡>﹏<｡)';
-        // 用 sid 保存错误消息到原始会话
-        const ref = aiSessionsRef.child(sid);
-        const errData = { role: 'assistant', content: errMsg, sender: 'Yian喵', ts: Date.now() };
-        ref.child('messages').push().set(errData);
-        ref.update({ lastMsg: errMsg.slice(0, 30), lastTs: errData.ts });
+        // 用 sid 保存错误消息到原始会话（如果会话未被删除）
+        if (!aiDeletedSessions.has(sid)) {
+            const errData = { role: 'assistant', content: errMsg, sender: 'Yian喵', ts: Date.now() };
+            aiMessagesRef.child(sid).push().set(errData);
+            aiSessionsRef.child(sid).update({ lastMsg: errMsg.slice(0, 30), lastTs: errData.ts });
+        }
     } finally {
-        aiIsGenerating = false;
-        sendBtn.disabled = false;
+        if (aiRequestId === thisRequestId) {
+            aiIsGenerating = false;
+            sendBtn.disabled = false;
+        }
     }
 }
 
