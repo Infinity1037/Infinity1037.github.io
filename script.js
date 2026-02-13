@@ -2678,10 +2678,17 @@ function pushOverlayState() {
 }
 
 // ==================== AI 猫咪聊天（多会话） ====================
-const WORKER_URL = 'https://cat-chat-proxy.1553857308.workers.dev';
+const WORKER_URL = 'https://api.changle.me';
 const AI_MODEL = 'aws.amazon/claude-opus-4-5:once';
 const AI_MAX_CONTEXT = 50;
 const AI_MAX_MESSAGES = 100;
+const AI_TIMEOUT = 30000;
+
+function fetchWithTimeout(url, options, timeout = AI_TIMEOUT) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeout);
+    return fetch(url, { ...options, signal: controller.signal }).finally(() => clearTimeout(timer));
+}
 let aiCurrentSessionId = null;
 let aiCurrentNick = '';
 let aiIsGenerating = false;
@@ -3143,7 +3150,7 @@ async function requestAiReply() {
     ];
 
     try {
-        const response = await fetch(WORKER_URL, {
+        const response = await fetchWithTimeout(WORKER_URL, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ model: AI_MODEL, messages, max_tokens: 300, stream: true, temperature: 0.8 }),
@@ -3201,7 +3208,10 @@ async function requestAiReply() {
         removeTypingIndicator();
         const el = document.getElementById('ai-streaming-msg');
         if (el) el.remove();
-        saveMessage('assistant', '喵呜…脑子转不动了，等会再试试吧 (｡>﹏<｡)', 'Yian喵');
+        const errMsg = err.name === 'AbortError'
+            ? '喵…等了好久都没反应，可能服务器在打盹 💤 稍后再试试吧~'
+            : '喵呜…脑子转不动了，等会再试试吧 (｡>﹏<｡)';
+        saveMessage('assistant', errMsg, 'Yian喵');
     } finally {
         aiIsGenerating = false;
         sendBtn.disabled = false;
@@ -3454,7 +3464,7 @@ async function requestGroupAiReply() {
     ];
 
     try {
-        const response = await fetch(WORKER_URL, {
+        const response = await fetchWithTimeout(WORKER_URL, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ model: AI_MODEL, messages, max_tokens: 300, stream: true, temperature: 0.8 }),
@@ -3516,7 +3526,10 @@ async function requestGroupAiReply() {
         if (typing) typing.remove();
         const streaming = document.getElementById('ai-group-streaming');
         if (streaming) streaming.remove();
-        const errData = { role: 'assistant', content: '喵呜…脑子转不动了，等会再试试吧 (｡>﹏<｡)', sender: 'Yian喵', ts: Date.now() };
+        const errMsg = err.name === 'AbortError'
+            ? '喵…等了好久都没反应，可能服务器在打盹 💤 稍后再试试吧~'
+            : '喵呜…脑子转不动了，等会再试试吧 (｡>﹏<｡)';
+        const errData = { role: 'assistant', content: errMsg, sender: 'Yian喵', ts: Date.now() };
         aiGroupRef.child('messages').push().set(errData);
     } finally {
         aiIsGenerating = false;

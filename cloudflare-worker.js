@@ -27,6 +27,9 @@ export default {
       // 限制 max_tokens 防止滥用
       body.max_tokens = Math.min(body.max_tokens || 300, 500);
 
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 25000);
+
       const apiResponse = await fetch('https://www.zhongzhuan.win/v1/chat/completions', {
         method: 'POST',
         headers: {
@@ -34,7 +37,10 @@ export default {
           'Authorization': `Bearer ${env.API_KEY}`,
         },
         body: JSON.stringify(body),
+        signal: controller.signal,
       });
+
+      clearTimeout(timeout);
 
       // 流式转发
       if (body.stream) {
